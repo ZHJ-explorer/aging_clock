@@ -108,6 +108,10 @@ def main():
     merged_df = merged_df.dropna()
     logger.info(f"删除NaN行后，样本数: {len(merged_df)}")
     
+    # 过滤掉年龄小于20的样本，只使用20及以上的样本
+    merged_df = merged_df[merged_df['age'] >= 20]
+    logger.info(f"过滤后（年龄>=20）样本数: {len(merged_df)}")
+    
     if len(merged_df) == 0:
         logger.error("错误：没有样本可用")
         exit(1)
