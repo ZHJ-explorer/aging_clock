@@ -1,14 +1,18 @@
 import os
+import sys
 import time
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import numpy as np
 import pandas as pd
 import logging
 import joblib
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from data_utils import split_data
+from scripts.utils.data_utils import split_data
 from optuna_tuning import tune_xgboost_optuna, select_features_xgboost
-from plot_results import convert_test_result_to_image
+from scripts.analysis.plot_results import convert_test_result_to_image
 
 
 class Config:

@@ -8,8 +8,8 @@ from sklearn.exceptions import ConvergenceWarning
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
-from data_utils import standardize_data
-from gene_utils import standardize_gene_name, map_gene_ids, align_genes_across_datasets
+from scripts.utils.data_utils import standardize_data
+from scripts.utils.gene_utils import standardize_gene_name, map_gene_ids, align_genes_across_datasets
 
 # 数据目录
 PREPROCESSED_DIR = 'preprocessed_data'
