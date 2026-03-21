@@ -1,0 +1,39 @@
+# 数据目录
+preprocessed_data/
+data/
+
+# 大文件
+merged_scaled.csv
+merged_processed.csv
+GTEx_processed.csv
+gene_tpm_v11_whole_blood.gct.gz
+GSE231409_combined_processed.csv
+GSE231409_rnaseq_processed.csv
+GSE164191_family.soft.gz
+GSE123698_family.soft.gz
+GSE123696_family.soft.gz
+GSE123697_family.soft.gz
+GSE164191_processed.csv
+
+# 临时文件
+*.tmp
+*.temp
+
+# IDE 文件
+.vscode/
+.idea/
+
+# 环境文件
+.env
+
+# 依赖目录
+node_modules/
+__pycache__/
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.gz
+
+# 模型文件（如果过大）
+# models/

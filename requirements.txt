@@ -1,0 +1,9 @@
+numpy
+pandas
+scikit-learn
+lightgbm
+joblib
+matplotlib
+GEOparse
+xgboost
+shap
