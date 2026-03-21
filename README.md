@@ -69,7 +69,7 @@ aging_clock/
 
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/ZHJ-explorer/aging_clock.git
 cd aging_clock
 
 # 安装依赖
