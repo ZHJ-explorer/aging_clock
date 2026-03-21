@@ -359,40 +359,25 @@ def select_features(X, y, method='combined', n_features=1000):
 
 
 def split_data(df, test_size=0.1, val_size=0.111):
-    """将数据分为训练集、验证集和测试集，确保测试集年龄>20"""
+    """将数据分为训练集、验证集和测试集，只使用年龄>=20的样本"""
     logger.info("分割数据...")
     
-    # 分离年龄>20和年龄<=20的样本
-    df_age_gt20 = df[df['age'] > 20]
-    df_age_le20 = df[df['age'] <= 20]
+    # 只保留年龄>=20的样本，完全排除年龄<20的样本
+    df_age_ge20 = df[df['age'] >= 20]
     
-    logger.info(f"年龄>20的样本数: {len(df_age_gt20)}")
-    logger.info(f"年龄<=20的样本数: {len(df_age_le20)}")
+    logger.info(f"年龄>=20的样本数: {len(df_age_ge20)}")
+    logger.info(f"年龄<20的样本数: {len(df) - len(df_age_ge20)} (已排除)")
     
-    # 从年龄>20的样本中分割测试集
+    # 从年龄>=20的样本中分割数据集
     from sklearn.model_selection import train_test_split
     
-    # 计算测试集大小（基于总样本数）
-    total_test_size = int(len(df) * test_size)
-    test_size_gt20 = min(total_test_size, len(df_age_gt20))
+    X = df_age_ge20.drop('age', axis=1)
+    y = df_age_ge20['age']
     
-    # 从年龄>20的样本中分割测试集
-    X_gt20 = df_age_gt20.drop('age', axis=1)
-    y_gt20 = df_age_gt20['age']
-    
-    X_train_val_gt20, X_test, y_train_val_gt20, y_test = train_test_split(
-        X_gt20, y_gt20, test_size=test_size_gt20, random_state=42
+    # 先分割出测试集
+    X_train_val, X_test, y_train_val, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=42
     )
-    
-    # 将年龄<=20的样本全部加入训练验证集
-    if len(df_age_le20) > 0:
-        X_le20 = df_age_le20.drop('age', axis=1)
-        y_le20 = df_age_le20['age']
-        X_train_val = pd.concat([X_train_val_gt20, X_le20])
-        y_train_val = pd.concat([y_train_val_gt20, y_le20])
-    else:
-        X_train_val = X_train_val_gt20
-        y_train_val = y_train_val_gt20
     
     # 从训练验证集中分割出验证集
     X_train, X_val, y_train, y_val = train_test_split(

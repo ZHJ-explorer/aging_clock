@@ -198,13 +198,13 @@ def main():
     
     # 保存前50个重要特征
     top_50_features = feature_importance_df.head(50)
-    top_50_features.to_csv('shap_feature_importance.csv', index=False)
+    top_50_features.to_csv('shap_feature_importance_xgboost.csv', index=False)
     
     logger.info("\n=== SHAP特征重要性Top 20 ===")
     for i, (index, row) in enumerate(top_50_features.head(20).iterrows()):
         logger.info(f"  {i+1}. {row['Feature']}: {row['SHAP Importance']:.4f}")
     
-    logger.info("\n核心衰老基因已保存到 shap_feature_importance.csv")
+    logger.info("\n核心衰老基因已保存到 shap_feature_importance_xgboost.csv")
     
     logger.info("\n=== 保存模型 ===")
     joblib.dump(final_model, os.path.join(Config.MODELS_DIR, 'xgboost_optimized.pkl'))
