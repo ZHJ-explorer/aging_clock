@@ -152,11 +152,11 @@ python scripts/model_training/main_stacking_refactored.py
 
 ## 输出文件
 
-- `shap_feature_importance.csv`：XGBoost模型的核心衰老基因（按SHAP重要性排序）
+- `shap_feature_importance_xgboost.csv`：XGBoost模型的核心衰老基因（按SHAP重要性排序）
 - `shap_feature_importance_stacking.csv`：Stacking模型的核心衰老基因
 - `optuna_logs/`：Optuna调优记录
 - `test_result_xgboost.txt`：XGBoost模型测试结果
-- `test_result_stacking_refactored.txt`：Stacking模型测试结果
+- `test_result_stacking.txt`：Stacking模型测试结果
 
 ## 依赖包
 

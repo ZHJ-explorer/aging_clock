@@ -36,7 +36,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('training_stacking_refactored.log', encoding='utf-8'),
+        logging.FileHandler('training_stacking.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -70,7 +70,7 @@ def evaluate_model(model, X_test, y_test, model_name):
     for pred, actual in zip(y_pred, y_test):
         result_lines.append(f"{pred:.4f},{actual:.4f}")
     
-    with open('test_result_stacking_refactored.txt', 'a', encoding='utf-8') as f:
+    with open('test_result_stacking.txt', 'a', encoding='utf-8') as f:
         f.write('\n'.join(result_lines) + '\n')
     
     return mae, rmse, r2, y_pred
@@ -89,14 +89,14 @@ def compute_model_correlations(predictions, model_names):
 
 
 def main():
-    with open('training_stacking_refactored.log', 'w', encoding='utf-8') as f:
-        f.write("重构Stacking训练日志\n")
+    with open('training_stacking.log', 'w', encoding='utf-8') as f:
+        f.write("Stacking训练日志\n")
         f.write("=" * 50 + "\n")
     
     logger.info("开始重构Stacking训练流程...")
     start_time = time.time()
     
-    with open('test_result_stacking_refactored.txt', 'w', encoding='utf-8') as f:
+    with open('test_result_stacking.txt', 'w', encoding='utf-8') as f:
         f.write("重构Stacking模型测试结果\n")
         f.write("=" * 50 + "\n")
     
@@ -250,7 +250,7 @@ def main():
     for pred, actual in zip(best_y_stack, y_test):
         result_lines.append(f"{pred:.4f},{actual:.4f}")
     
-    with open('test_result_stacking_refactored.txt', 'a', encoding='utf-8') as f:
+    with open('test_result_stacking.txt', 'a', encoding='utf-8') as f:
         f.write('\n'.join(result_lines) + '\n')
     
     logger.info("\n=== 步骤8: 重复交叉验证评估模型稳定性 ===")
@@ -330,8 +330,8 @@ def main():
     logger.info("\n核心衰老基因已保存到 shap_feature_importance_stacking.csv")
     
     logger.info("\n=== 保存模型 ===")
-    joblib.dump(trained_base_models, os.path.join(Config.MODELS_DIR, 'base_models_refactored.pkl'))
-    joblib.dump(best_weights, os.path.join(Config.MODELS_DIR, 'best_weights.pkl'))
+    joblib.dump(trained_base_models, os.path.join(Config.MODELS_DIR, 'base_models_stacking.pkl'))
+    joblib.dump(best_weights, os.path.join(Config.MODELS_DIR, 'best_weights_stacking.pkl'))
     joblib.dump(selected_features, os.path.join(Config.MODELS_DIR, 'selected_features_stacking.pkl'))
     logger.info("模型保存完成")
     
@@ -340,7 +340,7 @@ def main():
     logger.info(f"参与训练的数据条数: {len(merged_df)}")
     
     logger.info("\n运行绘图函数...")
-    convert_test_result_to_image(test_file='test_result_stacking_refactored.txt')
+    convert_test_result_to_image(test_file='test_result_stacking.txt')
 
 
 if __name__ == "__main__":
