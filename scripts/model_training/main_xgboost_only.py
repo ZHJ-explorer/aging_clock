@@ -9,7 +9,9 @@ import pandas as pd
 import logging
 import joblib
 import xgboost as xgb
+import shap
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import RepeatedKFold
 from scripts.utils.data_utils import split_data
 from optuna_tuning import tune_xgboost_optuna, select_features_xgboost
 from scripts.analysis.plot_results import convert_test_result_to_image
@@ -116,36 +118,96 @@ def main():
         logger.error("错误：没有样本可用")
         exit(1)
     
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
+    X = merged_df.drop('age', axis=1)
+    y = merged_df['age']
     
     logger.info("\n=== 步骤1: 基于XGBoost特征重要性选择特征 ===")
-    selected_features = select_features_xgboost(X_train, y_train, n_features=Config.N_FEATURES_XGBOOST)
-    
-    X_train_selected = X_train[selected_features]
-    X_val_selected = X_val[selected_features]
-    X_test_selected = X_test[selected_features]
-    
-    logger.info(f"特征选择后维度: {X_train_selected.shape[1]}")
-    
-    X_train_selected = X_train_selected.values
-    X_val_selected = X_val_selected.values
-    X_test_selected = X_test_selected.values
-    y_train = y_train.values
-    y_val = y_val.values
-    y_test = y_test.values
+    selected_features = select_features_xgboost(X, y, n_features=Config.N_FEATURES_XGBOOST)
+    X_selected = X[selected_features]
+    logger.info(f"特征选择后维度: {X_selected.shape[1]}")
     
     logger.info("\n=== 步骤2: 使用Optuna调优XGBoost超参数 ===")
     xgb_model, best_params, best_cv_score = tune_xgboost_optuna(
-        X_train_selected, y_train,
+        X_selected.values, y.values,
         n_trials=Config.OPTUNA_N_TRIALS,
         cv=Config.OPTUNA_CV
     )
     
-    logger.info("\n=== 步骤3: 评估优化后的XGBoost模型 ===")
-    evaluate_model(xgb_model, X_test_selected, y_test, "XGBoost_Optimized")
+    logger.info("\n=== 步骤3: 重复交叉验证评估模型稳定性 ===")
+    # 5折交叉验证，重复3次
+    rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+    
+    r2_scores = []
+    mae_scores = []
+    rmse_scores = []
+    
+    for fold_idx, (train_idx, test_idx) in enumerate(rkf.split(X_selected)):
+        X_train_fold, X_test_fold = X_selected.iloc[train_idx], X_selected.iloc[test_idx]
+        y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
+        
+        model = xgb.XGBRegressor(**best_params, random_state=42, n_jobs=-1)
+        model.fit(X_train_fold, y_train_fold)
+        
+        y_pred = model.predict(X_test_fold)
+        r2 = r2_score(y_test_fold, y_pred)
+        mae = mean_absolute_error(y_test_fold, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_test_fold, y_pred))
+        
+        r2_scores.append(r2)
+        mae_scores.append(mae)
+        rmse_scores.append(rmse)
+        
+        logger.info(f"  重复交叉验证第{fold_idx+1}次: R²={r2:.4f}, MAE={mae:.4f}, RMSE={rmse:.4f}")
+    
+    logger.info("\n=== 重复交叉验证结果汇总 ===")
+    logger.info(f"平均R²: {np.mean(r2_scores):.4f} ± {np.std(r2_scores):.4f}")
+    logger.info(f"平均MAE: {np.mean(mae_scores):.4f} ± {np.std(mae_scores):.4f}")
+    logger.info(f"平均RMSE: {np.mean(rmse_scores):.4f} ± {np.std(rmse_scores):.4f}")
+    
+    # 标准的训练集、验证集、测试集拆分
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
+    X_train_selected = X_train[selected_features]
+    X_val_selected = X_val[selected_features]
+    X_test_selected = X_test[selected_features]
+    
+    # 重新训练模型用于最终评估
+    final_model = xgb.XGBRegressor(**best_params, random_state=42, n_jobs=-1)
+    final_model.fit(X_train_selected, y_train)
+    
+    logger.info("\n=== 步骤4: 评估优化后的XGBoost模型 ===")
+    evaluate_model(final_model, X_test_selected, y_test, "XGBoost_Optimized")
+    
+    logger.info("\n=== 步骤5: SHAP分析，识别核心衰老基因 ===")
+    # 创建SHAP解释器
+    explainer = shap.TreeExplainer(final_model)
+    
+    # 计算SHAP值
+    shap_values = explainer.shap_values(X_test_selected)
+    
+    # 计算特征重要性（基于SHAP值的绝对值）
+    feature_importance = np.abs(shap_values).mean(axis=0)
+    
+    # 创建特征重要性DataFrame
+    feature_importance_df = pd.DataFrame({
+        'Feature': selected_features,
+        'SHAP Importance': feature_importance
+    })
+    
+    # 按重要性排序
+    feature_importance_df = feature_importance_df.sort_values('SHAP Importance', ascending=False)
+    
+    # 保存前50个重要特征
+    top_50_features = feature_importance_df.head(50)
+    top_50_features.to_csv('shap_feature_importance.csv', index=False)
+    
+    logger.info("\n=== SHAP特征重要性Top 20 ===")
+    for i, (index, row) in enumerate(top_50_features.head(20).iterrows()):
+        logger.info(f"  {i+1}. {row['Feature']}: {row['SHAP Importance']:.4f}")
+    
+    logger.info("\n核心衰老基因已保存到 shap_feature_importance.csv")
     
     logger.info("\n=== 保存模型 ===")
-    joblib.dump(xgb_model, os.path.join(Config.MODELS_DIR, 'xgboost_optimized.pkl'))
+    joblib.dump(final_model, os.path.join(Config.MODELS_DIR, 'xgboost_optimized.pkl'))
     joblib.dump(selected_features, os.path.join(Config.MODELS_DIR, 'selected_features_xgboost.pkl'))
     joblib.dump(best_params, os.path.join(Config.MODELS_DIR, 'best_params_xgboost.pkl'))
     logger.info("模型保存完成")

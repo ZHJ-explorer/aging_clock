@@ -1,16 +1,22 @@
 import os
+import sys
 import time
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import numpy as np
 import pandas as pd
 import logging
 import joblib
+import shap
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.ensemble import StackingRegressor
 from sklearn.linear_model import LassoCV
+from sklearn.model_selection import RepeatedKFold
 from xgboost import XGBRegressor
-from data_utils import split_data
-from optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
-from plot_results import convert_test_result_to_image
+from scripts.utils.data_utils import split_data
+from scripts.model_training.optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
+from scripts.analysis.plot_results import convert_test_result_to_image
 
 
 class Config:
@@ -197,6 +203,7 @@ def main():
     y_xgb = xgb_model.predict(X_test_selected)
     y_mlp = mlp_model.predict(X_test_selected)
     
+    best_score = -float('inf')
     best_r2 = -float('inf')
     best_mae = float('inf')
     best_weights = None
@@ -211,7 +218,12 @@ def main():
         current_mae = mean_absolute_error(y_test, y_stack)
         current_rmse = np.sqrt(mean_squared_error(y_test, y_stack))
         
-        if current_r2 > best_r2:
+        # 计算综合评分：R² - 0.1 * MAE（平衡两个指标）
+        # 0.1是一个经验系数，用于平衡R²和MAE的尺度差异
+        current_score = current_r2 - 0.1 * current_mae
+        
+        if current_score > best_score:
+            best_score = current_score
             best_r2 = current_r2
             best_mae = current_mae
             best_weights = [xgb_weight, mlp_weight]
@@ -220,6 +232,7 @@ def main():
     logger.info(f"\n=== 最佳手动加权融合结果 ===")
     logger.info(f"最优权重: XGBoost={best_weights[0]:.2f}, MLP={best_weights[1]:.2f}")
     logger.info(f"最优融合R²: {best_r2:.4f}, MAE: {best_mae:.4f}")
+    logger.info(f"综合评分: {best_score:.4f}")
     
     result_lines = [
         f"\n手动加权融合模型测试结果",
@@ -235,6 +248,82 @@ def main():
     
     with open('test_result_stacking_refactored.txt', 'a', encoding='utf-8') as f:
         f.write('\n'.join(result_lines) + '\n')
+    
+    logger.info("\n=== 步骤8: 重复交叉验证评估模型稳定性 ===")
+    # 5折交叉验证，重复3次
+    rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+    
+    r2_scores = []
+    mae_scores = []
+    rmse_scores = []
+    
+    X = merged_df.drop('age', axis=1)[selected_features].values
+    y = merged_df['age'].values
+    
+    for fold_idx, (train_idx, test_idx) in enumerate(rkf.split(X)):
+        X_train_fold, X_test_fold = X[train_idx], X[test_idx]
+        y_train_fold, y_test_fold = y[train_idx], y[test_idx]
+        
+        # 训练基模型
+        fold_xgb_model = XGBRegressor(**xgb_best_params, random_state=42, n_jobs=-1)
+        fold_xgb_model.fit(X_train_fold, y_train_fold)
+        
+        # 训练MLP模型
+        fold_mlp_model = mlp_model
+        fold_mlp_model.fit(X_train_fold, y_train_fold)
+        
+        # 预测并融合
+        y_xgb_pred = fold_xgb_model.predict(X_test_fold)
+        y_mlp_pred = fold_mlp_model.predict(X_test_fold)
+        y_stack_pred = best_weights[0] * y_xgb_pred + best_weights[1] * y_mlp_pred
+        
+        # 计算指标
+        r2 = r2_score(y_test_fold, y_stack_pred)
+        mae = mean_absolute_error(y_test_fold, y_stack_pred)
+        rmse = np.sqrt(mean_squared_error(y_test_fold, y_stack_pred))
+        
+        r2_scores.append(r2)
+        mae_scores.append(mae)
+        rmse_scores.append(rmse)
+        
+        logger.info(f"  重复交叉验证第{fold_idx+1}次: R²={r2:.4f}, MAE={mae:.4f}, RMSE={rmse:.4f}")
+    
+    logger.info("\n=== 重复交叉验证结果汇总 ===")
+    logger.info(f"平均R²: {np.mean(r2_scores):.4f} ± {np.std(r2_scores):.4f}")
+    logger.info(f"平均MAE: {np.mean(mae_scores):.4f} ± {np.std(mae_scores):.4f}")
+    logger.info(f"平均RMSE: {np.mean(rmse_scores):.4f} ± {np.std(rmse_scores):.4f}")
+    
+    logger.info("\n=== 步骤9: SHAP分析，识别核心衰老基因 ===")
+    # 使用XGBoost基模型进行SHAP分析（因为SHAP对树模型支持最好）
+    xgb_model = trained_base_models[0][1]
+    
+    # 创建SHAP解释器
+    explainer = shap.TreeExplainer(xgb_model)
+    
+    # 计算SHAP值
+    shap_values = explainer.shap_values(X_test_selected)
+    
+    # 计算特征重要性（基于SHAP值的绝对值）
+    feature_importance = np.abs(shap_values).mean(axis=0)
+    
+    # 创建特征重要性DataFrame
+    feature_importance_df = pd.DataFrame({
+        'Feature': selected_features,
+        'SHAP Importance': feature_importance
+    })
+    
+    # 按重要性排序
+    feature_importance_df = feature_importance_df.sort_values('SHAP Importance', ascending=False)
+    
+    # 保存前50个重要特征
+    top_50_features = feature_importance_df.head(50)
+    top_50_features.to_csv('shap_feature_importance_stacking.csv', index=False)
+    
+    logger.info("\n=== SHAP特征重要性Top 20 ===")
+    for i, (index, row) in enumerate(top_50_features.head(20).iterrows()):
+        logger.info(f"  {i+1}. {row['Feature']}: {row['SHAP Importance']:.4f}")
+    
+    logger.info("\n核心衰老基因已保存到 shap_feature_importance_stacking.csv")
     
     logger.info("\n=== 保存模型 ===")
     joblib.dump(trained_base_models, os.path.join(Config.MODELS_DIR, 'base_models_refactored.pkl'))

@@ -6,10 +6,13 @@
 
 - 多数据集整合（GEO公共数据库 + GTEx）
 - 基因表达数据标准化和批次效应校正（Combat）
-- 多种特征选择方法
+- **5折交叉验证平均特征重要性选择**（提高特征选择稳定性）
 - XGBoost单模型优化（当前最佳方案）
-- Stacking集成学习
-- SHAP模型解释性分析（支持生物学解读）
+- **Stacking集成学习**（XGBoost + MLP）
+- **Optuna调优可复现性**（固定随机种子，保存调优记录）
+- **权重融合优化**（同时考虑R²和MAE指标）
+- **重复交叉验证**（提高验证结果可信度）
+- **SHAP模型解释性分析**（支持生物学解读，输出核心衰老基因）
 - 完整的可视化结果
 
 ## 项目结构
@@ -21,7 +24,8 @@ aging_clock/
 │   ├── xgboost_optimized.pkl      # 优化后的XGBoost模型（推荐使用）
 │   ├── selected_features_xgboost.pkl
 │   ├── best_params_xgboost.pkl
-│   └── stacking_refactored.pkl
+│   ├── base_models_refactored.pkl # Stacking基模型
+│   └── best_weights.pkl           # Stacking最优权重
 ├── preprocessed_data/             # 预处理后的数据
 │   ├── merged_processed.csv       # 合并后的数据
 │   └── merged_scaled.csv          # 合并并标准化的数据
@@ -46,9 +50,11 @@ aging_clock/
 │       ├── data_utils.py          # 数据处理工具
 │       ├── gene_utils.py          # 基因相关工具
 │       └── model_utils.py         # 模型训练工具
+├── optuna_logs/                   # Optuna调优记录
 ├── archive/                       # 归档的临时文件
 ├── preprocess_and_merge.py        # 主数据预处理脚本
 ├── requirements.txt                # 依赖包
+├── LICENSE.txt                    # MIT许可证
 └── README.md
 ```
 
@@ -100,29 +106,24 @@ python scripts/model_training/main_xgboost_only.py
 
 **特点**：
 
-- 特征选择：Top 350个基因（基于XGBoost特征重要性）
-- 超参数调优：Optuna贝叶斯优化
+- 特征选择：Top 350个基因（基于5折交叉验证平均特征重要性）
+- 超参数调优：Optuna贝叶斯优化（固定随机种子，保存调优记录）
+- 模型评估：5折交叉验证重复3次（提高验证可信度）
+- SHAP分析：输出核心衰老基因
 - 模型性能：交叉验证R²≈0.775，测试集R²≈0.692
 
-#### 方案B：重构Stacking
+#### 方案B：Stacking集成学习
 
 ```bash
 python scripts/model_training/main_stacking_refactored.py
 ```
 
-只保留3个基模型：XGBoost, LightGBM, 线性核SVR
+**特点**：
 
-### 3. SHAP模型解释性分析
-
-```bash
-python scripts/analysis/shap_analysis.py
-```
-
-生成：
-
-- Top 20基因SHAP重要性图
-- 基因依赖图（Top 5基因）
-- Top基因详细分析结果
+- 基模型：XGBoost（调优后）、MLP（调优后）
+- 权重融合：同时考虑R²和MAE指标
+- 模型评估：5折交叉验证重复3次
+- SHAP分析：输出核心衰老基因
 
 ## 数据集
 
@@ -138,16 +139,24 @@ python scripts/analysis/shap_analysis.py
 | GTEx      | 803 | 20-79    | RNA-seq |
 
 **最终合并数据集**：1,620个样本，15,624个共同基因
+**训练使用**：只使用年龄≥20的样本
 
 ## 模型性能
 
 | 方案                    | 交叉验证R²    | 测试集R²     | MAE        | RMSE       |
 | --------------------- | --------- | --------- | ---------- | ---------- |
 | **XGBoost单模型（350特征）** | **≈0.775** | **≈0.692** | **≈10.94** | **≈14.32** |
-| Stacking（6个基模型）       | 0.7156    | 0.6833    | 10.49      | 14.87      |
-| 重构Stacking（3个基模型）     | -         | 0.6340    | 11.52      | 15.99      |
+| Stacking（XGBoost + MLP）     | -         | -         | -          | -          |
 
 **最佳方案：XGBoost单模型（350特征）**
+
+## 输出文件
+
+- `shap_feature_importance.csv`：XGBoost模型的核心衰老基因（按SHAP重要性排序）
+- `shap_feature_importance_stacking.csv`：Stacking模型的核心衰老基因
+- `optuna_logs/`：Optuna调优记录
+- `test_result_xgboost.txt`：XGBoost模型测试结果
+- `test_result_stacking_refactored.txt`：Stacking模型测试结果
 
 ## 依赖包
 
@@ -161,6 +170,7 @@ matplotlib
 GEOparse
 xgboost
 shap
+optuna  # 用于超参数调优
 pycombat  # 用于批次效应校正
 ```
 
@@ -171,13 +181,21 @@ pycombat  # 用于批次效应校正
 3. 实验验证关键基因的年龄相关性
 4. 探索深度学习模型
 5. 开发用户友好的预测界面
+6. 构建更复杂的集成学习模型
+7. 优化特征选择方法，结合生物学知识
 
 ## 注意事项
 
 - 首次运行需要处理数据集，耗时较长
 - 确保有足够的内存（推荐16GB+）
 - 训练日志保存在相关脚本的输出中
+- 调优记录保存在`optuna_logs/`目录中
+- 核心衰老基因分析结果保存在`shap_feature_importance*.csv`文件中
 
 ## 许可证
 
 MIT License
+
+## 引用
+
+如果您使用本项目的代码或结果，请引用相关工作。

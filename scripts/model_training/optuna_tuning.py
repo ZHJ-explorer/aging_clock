@@ -2,7 +2,8 @@ import numpy as np
 import logging
 import optuna
 import xgboost as xgb
-from sklearn.model_selection import cross_val_score
+import os
+from sklearn.model_selection import cross_val_score, KFold
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -40,6 +41,13 @@ def tune_xgboost_optuna(X_train, y_train, n_trials=50, cv=5):
     logger.info("开始使用Optuna调优XGBoost模型...")
     logger.info(f"试验次数: {n_trials}, 交叉验证折数: {cv}")
     
+    # 固定随机种子，确保结果可复现
+    # 使用Optuna推荐的方式设置随机种子
+    import random
+    import numpy as np
+    random.seed(42)
+    np.random.seed(42)
+    
     study = optuna.create_study(direction='maximize', study_name='XGBoost_Tuning')
     study.optimize(
         lambda trial: objective_xgboost(trial, X_train, y_train, cv=cv),
@@ -50,6 +58,11 @@ def tune_xgboost_optuna(X_train, y_train, n_trials=50, cv=5):
     logger.info(f"最佳R²得分: {study.best_value:.4f}")
     logger.info(f"最佳参数: {study.best_params}")
     
+    # 保存调优记录
+    os.makedirs('optuna_logs', exist_ok=True)
+    study.trials_dataframe().to_csv('optuna_logs/xgboost_tuning_logs.csv', index=False)
+    logger.info("调优记录已保存到 optuna_logs/xgboost_tuning_logs.csv")
+    
     best_model = xgb.XGBRegressor(**study.best_params, random_state=42, n_jobs=-1)
     best_model.fit(X_train, y_train)
     
@@ -57,31 +70,46 @@ def tune_xgboost_optuna(X_train, y_train, n_trials=50, cv=5):
 
 
 def select_features_xgboost(X_train, y_train, n_features=250):
-    """使用XGBoost特征重要性选择Top N特征"""
-    logger.info(f"使用XGBoost特征重要性选择Top {n_features}个特征...")
-    
-    model = xgb.XGBRegressor(
-        n_estimators=200,
-        learning_rate=0.05,
-        max_depth=4,
-        random_state=42,
-        n_jobs=-1
-    )
-    model.fit(X_train, y_train)
-    
-    feature_importances = model.feature_importances_
+    """使用5折交叉验证平均特征重要性选择Top N特征"""
+    logger.info(f"使用5折交叉验证平均特征重要性选择Top {n_features}个特征...")
     
     if hasattr(X_train, 'columns'):
         features = X_train.columns
     else:
         features = np.arange(X_train.shape[1])
     
-    feature_importance_dict = dict(zip(features, feature_importances))
+    # 初始化特征重要性累加器
+    feature_importance_sum = np.zeros(len(features))
+    
+    # 5折交叉验证
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    
+    for fold, (train_idx, val_idx) in enumerate(kf.split(X_train)):
+        logger.info(f"  第{fold+1}折交叉验证...")
+        
+        X_fold_train, y_fold_train = X_train.iloc[train_idx] if hasattr(X_train, 'iloc') else X_train[train_idx], y_train.iloc[train_idx] if hasattr(y_train, 'iloc') else y_train[train_idx]
+        
+        model = xgb.XGBRegressor(
+            n_estimators=200,
+            learning_rate=0.05,
+            max_depth=4,
+            random_state=42,
+            n_jobs=-1
+        )
+        model.fit(X_fold_train, y_fold_train)
+        
+        # 累加特征重要性
+        feature_importance_sum += model.feature_importances_
+    
+    # 计算平均特征重要性
+    feature_importance_avg = feature_importance_sum / 5
+    
+    feature_importance_dict = dict(zip(features, feature_importance_avg))
     sorted_features = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
     
     top_features = [f for f, _ in sorted_features[:n_features]]
     
-    logger.info(f"特征重要性Top 10:")
+    logger.info(f"5折交叉验证平均特征重要性Top 10:")
     for i, (feature, importance) in enumerate(sorted_features[:10]):
         logger.info(f"  {i+1}. {feature}: {importance:.4f}")
     
@@ -113,6 +141,12 @@ def tune_knn_optuna(X_train, y_train, n_trials=50, cv=10):
     logger.info("开始使用Optuna调优KNN回归模型...")
     logger.info(f"试验次数: {n_trials}, 交叉验证折数: {cv}")
     
+    # 固定随机种子，确保结果可复现
+    import random
+    import numpy as np
+    random.seed(42)
+    np.random.seed(42)
+    
     study = optuna.create_study(direction='maximize', study_name='KNN_Tuning')
     study.optimize(
         lambda trial: objective_knn(trial, X_train, y_train, cv=cv),
@@ -122,6 +156,11 @@ def tune_knn_optuna(X_train, y_train, n_trials=50, cv=10):
     
     logger.info(f"KNN最佳R²得分: {study.best_value:.4f}")
     logger.info(f"KNN最佳参数: {study.best_params}")
+    
+    # 保存调优记录
+    os.makedirs('optuna_logs', exist_ok=True)
+    study.trials_dataframe().to_csv('optuna_logs/knn_tuning_logs.csv', index=False)
+    logger.info("调优记录已保存到 optuna_logs/knn_tuning_logs.csv")
     
     best_pipeline = Pipeline([
         ('scaler', StandardScaler()),
@@ -198,6 +237,12 @@ def tune_gpr_optuna(X_train, y_train, n_trials=30, cv=5):
     logger.info("开始使用Optuna调优GPR模型...")
     logger.info(f"试验次数: {n_trials}, 交叉验证折数: {cv}")
     
+    # 固定随机种子，确保结果可复现
+    import random
+    import numpy as np
+    random.seed(42)
+    np.random.seed(42)
+    
     study = optuna.create_study(direction='maximize', study_name='GPR_Tuning')
     study.optimize(
         lambda trial: objective_gpr(trial, X_train, y_train, cv=cv),
@@ -207,6 +252,11 @@ def tune_gpr_optuna(X_train, y_train, n_trials=30, cv=5):
     
     logger.info(f"GPR最佳R²得分: {study.best_value:.4f}")
     logger.info(f"GPR最佳参数: {study.best_params}")
+    
+    # 保存调优记录
+    os.makedirs('optuna_logs', exist_ok=True)
+    study.trials_dataframe().to_csv('optuna_logs/gpr_tuning_logs.csv', index=False)
+    logger.info("调优记录已保存到 optuna_logs/gpr_tuning_logs.csv")
     
     best_params = study.best_params
     kernel = Matern(nu=best_params['nu']) + WhiteKernel(noise_level=best_params['noise_level'])
@@ -263,6 +313,12 @@ def tune_mlp_optuna(X_train, y_train, n_trials=50, cv=10):
     logger.info("开始使用Optuna调优MLP模型（精细调优版本）...")
     logger.info(f"试验次数: {n_trials}, 交叉验证折数: {cv}")
     
+    # 固定随机种子，确保结果可复现
+    import random
+    import numpy as np
+    random.seed(42)
+    np.random.seed(42)
+    
     study = optuna.create_study(direction='maximize', study_name='MLP_Fine_Tuning')
     study.optimize(
         lambda trial: objective_mlp(trial, X_train, y_train, cv=cv),
@@ -272,6 +328,11 @@ def tune_mlp_optuna(X_train, y_train, n_trials=50, cv=10):
     
     logger.info(f"MLP最佳交叉验证R²: {study.best_value:.4f}")
     logger.info(f"MLP最佳参数: {study.best_params}")
+    
+    # 保存调优记录
+    os.makedirs('optuna_logs', exist_ok=True)
+    study.trials_dataframe().to_csv('optuna_logs/mlp_tuning_logs.csv', index=False)
+    logger.info("调优记录已保存到 optuna_logs/mlp_tuning_logs.csv")
     
     best_params = study.best_params
     mlp = MLPRegressor(

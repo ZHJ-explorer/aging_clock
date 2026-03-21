@@ -37,3 +37,6 @@ __pycache__/
 
 # 模型文件（如果过大）
 # models/
+
+# CSV文件
+*.csv
