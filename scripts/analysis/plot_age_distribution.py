@@ -57,12 +57,14 @@ def plot_age_distribution_histogram():
     ax.bar(bin_centers, hist_test, width=bar_width, bottom=hist_train + hist_val, 
            label=f'Test (n={len(y_test)})', color='#e74c3c', edgecolor='white', alpha=0.8)
 
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles[::-1], labels[::-1], loc='upper right')
+    
     ax.set_xlabel('Age (years)', fontsize=12)
     ax.set_ylabel('Count', fontsize=12)
     ax.set_title('Age Distribution of Train/Validation/Test Sets', fontsize=14)
     ax.set_xticks(bin_centers)
     ax.set_xticklabels([f'{int(bins[i])}-{int(bins[i+1])}' for i in range(len(bins)-1)])
-    ax.legend(loc='upper right')
     ax.grid(alpha=0.3, axis='y')
 
     output_file = os.path.join(PLOTS_DIR, 'age_distribution_histogram.png')
