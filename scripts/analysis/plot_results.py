@@ -60,42 +60,42 @@ def convert_test_result_to_image(test_file='test_result.txt'):
         if current_model and current_predictions:
             predictions[current_model] = current_predictions
         
-        # Plot metrics comparison
-        plt.figure(figsize=(12, 8))
-        
-        # Plot MAE comparison
-        plt.subplot(3, 1, 1)
-        model_names = [m['model'] for m in metrics]
-        mae_values = [m['mae'] for m in metrics]
-        plt.bar(model_names, mae_values)
-        plt.title('MAE Comparison')
-        plt.ylabel('MAE')
-        # Add value labels
-        for i, v in enumerate(mae_values):
-            plt.text(i, v + 0.1, f'{v:.4f}', ha='center')
-        
-        # Plot RMSE comparison
-        plt.subplot(3, 1, 2)
-        rmse_values = [m['rmse'] for m in metrics]
-        plt.bar(model_names, rmse_values)
-        plt.title('RMSE Comparison')
-        plt.ylabel('RMSE')
-        # Add value labels
-        for i, v in enumerate(rmse_values):
-            plt.text(i, v + 0.1, f'{v:.4f}', ha='center')
-        
-        # Plot R² comparison
-        plt.subplot(3, 1, 3)
-        r2_values = [m['r2'] for m in metrics]
-        plt.bar(model_names, r2_values)
-        plt.title('R² Comparison')
-        plt.ylabel('R²')
-        # Add value labels
-        for i, v in enumerate(r2_values):
-            plt.text(i, v + 0.01, f'{v:.4f}', ha='center')
-        
-        plt.tight_layout()
-        plt.savefig(os.path.join(PLOTS_DIR, 'metrics_comparison.png'))
+        # Skip metrics comparison plot
+        # plt.figure(figsize=(12, 8))
+        # 
+        # # Plot MAE comparison
+        # plt.subplot(3, 1, 1)
+        # model_names = [m['model'] for m in metrics]
+        # mae_values = [m['mae'] for m in metrics]
+        # plt.bar(model_names, mae_values)
+        # plt.title('MAE Comparison')
+        # plt.ylabel('MAE')
+        # # Add value labels
+        # for i, v in enumerate(mae_values):
+        #     plt.text(i, v + 0.1, f'{v:.4f}', ha='center')
+        # 
+        # # Plot RMSE comparison
+        # plt.subplot(3, 1, 2)
+        # rmse_values = [m['rmse'] for m in metrics]
+        # plt.bar(model_names, rmse_values)
+        # plt.title('RMSE Comparison')
+        # plt.ylabel('RMSE')
+        # # Add value labels
+        # for i, v in enumerate(rmse_values):
+        #     plt.text(i, v + 0.1, f'{v:.4f}', ha='center')
+        # 
+        # # Plot R² comparison
+        # plt.subplot(3, 1, 3)
+        # r2_values = [m['r2'] for m in metrics]
+        # plt.bar(model_names, r2_values)
+        # plt.title('R² Comparison')
+        # plt.ylabel('R²')
+        # # Add value labels
+        # for i, v in enumerate(r2_values):
+        #     plt.text(i, v + 0.01, f'{v:.4f}', ha='center')
+        # 
+        # plt.tight_layout()
+        # plt.savefig(os.path.join(PLOTS_DIR, 'metrics_comparison.png'))
         
         # Plot prediction vs actual scatter for each model
         for model, preds in predictions.items():
