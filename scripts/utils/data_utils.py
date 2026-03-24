@@ -359,29 +359,38 @@ def select_features(X, y, method='combined', n_features=1000):
 
 
 def split_data(df, test_size=0.1, val_size=0.111):
-    """将数据分为训练集、验证集和测试集，只使用年龄>=20的样本"""
+    """将数据分为训练集、验证集和测试集，只使用年龄>=20的样本，使用分层抽样"""
     logger.info("分割数据...")
     
     # 只保留年龄>=20的样本，完全排除年龄<20的样本
-    df_age_ge20 = df[df['age'] >= 20]
+    df_age_ge20 = df[df['age'] >= 20].copy()
     
     logger.info(f"年龄>=20的样本数: {len(df_age_ge20)}")
     logger.info(f"年龄<20的样本数: {len(df) - len(df_age_ge20)} (已排除)")
     
+    # 创建年龄分层组
+    bins = [20, 30, 40, 50, 60, 70, 80, 90, 100]
+    df_age_ge20['age_stratify'] = pd.cut(df_age_ge20['age'], bins=bins, include_lowest=True)
+    
     # 从年龄>=20的样本中分割数据集
     from sklearn.model_selection import train_test_split
     
-    X = df_age_ge20.drop('age', axis=1)
+    X = df_age_ge20.drop(['age', 'age_stratify'], axis=1)
     y = df_age_ge20['age']
+    stratify = df_age_ge20['age_stratify']
     
-    # 先分割出测试集
+    # 先分割出测试集（使用分层抽样）
     X_train_val, X_test, y_train_val, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=42
+        X, y, test_size=test_size, random_state=42, stratify=stratify
     )
     
-    # 从训练验证集中分割出验证集
+    # 为训练验证集创建新的分层组
+    df_train_val = df_age_ge20.loc[X_train_val.index].copy()
+    stratify_train_val = df_train_val['age_stratify']
+    
+    # 从训练验证集中分割出验证集（使用分层抽样）
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val, test_size=val_size, random_state=42
+        X_train_val, y_train_val, test_size=val_size, random_state=42, stratify=stratify_train_val
     )
     
     logger.info(f"训练集: {len(X_train)} 样本")

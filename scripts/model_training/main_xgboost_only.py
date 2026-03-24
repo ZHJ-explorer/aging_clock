@@ -13,6 +13,7 @@ import shap
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import RepeatedKFold
 from scripts.utils.data_utils import split_data
+from scripts.utils.model_utils import evaluate_model
 from optuna_tuning import tune_xgboost_optuna, select_features_xgboost
 from scripts.analysis.plot_results import convert_test_result_to_image
 
@@ -40,36 +41,6 @@ logger = logging.getLogger(__name__)
 
 os.makedirs(Config.MODELS_DIR, exist_ok=True)
 os.makedirs(Config.PLOTS_DIR, exist_ok=True)
-
-
-def evaluate_model(model, X_test, y_test, model_name):
-    logger.info(f"评估 {model_name} 模型...")
-    y_pred = model.predict(X_test)
-    
-    mae = mean_absolute_error(y_test, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-    r2 = r2_score(y_test, y_pred)
-    
-    logger.info(f"{model_name} 模型性能:")
-    logger.info(f"MAE: {mae:.4f}")
-    logger.info(f"RMSE: {rmse:.4f}")
-    logger.info(f"R2: {r2:.4f}")
-    
-    result_lines = [
-        f"\n{model_name} 模型测试结果:",
-        f"MAE: {mae:.4f}",
-        f"RMSE: {rmse:.4f}",
-        f"R2: {r2:.4f}",
-        "预测值,实际值"
-    ]
-    
-    for pred, actual in zip(y_pred, y_test):
-        result_lines.append(f"{pred:.4f},{actual:.4f}")
-    
-    with open('test_result_xgboost.txt', 'a', encoding='utf-8') as f:
-        f.write('\n'.join(result_lines) + '\n')
-    
-    return mae, rmse, r2
 
 
 def main():
@@ -175,7 +146,7 @@ def main():
     final_model.fit(X_train_selected, y_train)
     
     logger.info("\n=== 步骤4: 评估优化后的XGBoost模型 ===")
-    evaluate_model(final_model, X_test_selected, y_test, "XGBoost_Optimized")
+    evaluate_model(final_model, X_test_selected, y_test, "XGBoost_Optimized", output_file='test_result_xgboost.txt')
     
     logger.info("\n=== 步骤5: SHAP分析，识别核心衰老基因 ===")
     # 创建SHAP解释器

@@ -15,6 +15,7 @@ from sklearn.linear_model import LassoCV
 from sklearn.model_selection import RepeatedKFold
 from xgboost import XGBRegressor
 from scripts.utils.data_utils import split_data
+from scripts.utils.model_utils import evaluate_model
 from scripts.model_training.optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
 from scripts.analysis.plot_results import convert_test_result_to_image
 
@@ -44,36 +45,6 @@ logger = logging.getLogger(__name__)
 
 os.makedirs(Config.MODELS_DIR, exist_ok=True)
 os.makedirs(Config.PLOTS_DIR, exist_ok=True)
-
-
-def evaluate_model(model, X_test, y_test, model_name):
-    logger.info(f"评估 {model_name} 模型...")
-    y_pred = model.predict(X_test)
-    
-    mae = mean_absolute_error(y_test, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-    r2 = r2_score(y_test, y_pred)
-    
-    logger.info(f"{model_name} 模型性能:")
-    logger.info(f"MAE: {mae:.4f}")
-    logger.info(f"RMSE: {rmse:.4f}")
-    logger.info(f"R2: {r2:.4f}")
-    
-    result_lines = [
-        f"\n{model_name} 模型测试结果:",
-        f"MAE: {mae:.4f}",
-        f"RMSE: {rmse:.4f}",
-        f"R2: {r2:.4f}",
-        "预测值,实际值"
-    ]
-    
-    for pred, actual in zip(y_pred, y_test):
-        result_lines.append(f"{pred:.4f},{actual:.4f}")
-    
-    with open('test_result_stacking.txt', 'a', encoding='utf-8') as f:
-        f.write('\n'.join(result_lines) + '\n')
-    
-    return mae, rmse, r2, y_pred
 
 
 def compute_model_correlations(predictions, model_names):
@@ -194,7 +165,7 @@ def main():
         base_predictions.append(y_pred)
         model_names.append(name)
         
-        evaluate_model(model, X_test_selected, y_test, name)
+        evaluate_model(model, X_test_selected, y_test, name, output_file='test_result_stacking.txt')
     
     logger.info("\n=== 步骤6: 验证基模型相关性 ===")
     compute_model_correlations(base_predictions, model_names)

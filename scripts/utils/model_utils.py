@@ -131,14 +131,23 @@ def train_models(X_train, y_train, X_val, y_val, use_hyperparameter_tuning=False
     return ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model
 
 
-def evaluate_model(model, X_test, y_test, model_name):
-    """评估模型性能"""
+def evaluate_model(model, X_test, y_test, model_name, output_file='test_result.txt'):
+    """评估模型性能
+    
+    Args:
+        model: 训练好的模型
+        X_test: 测试集特征
+        y_test: 测试集标签
+        model_name: 模型名称
+        output_file: 输出文件路径，默认为 'test_result.txt'
+    
+    Returns:
+        tuple: (MAE, RMSE, R², 预测值)
+    """
     logger.info(f"评估 {model_name} 模型...")
     
-    # 预测
     y_pred = model.predict(X_test)
     
-    # 计算评估指标
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     r2 = r2_score(y_test, y_pred)
@@ -148,7 +157,6 @@ def evaluate_model(model, X_test, y_test, model_name):
     logger.info(f"RMSE: {rmse:.4f}")
     logger.info(f"R2: {r2:.4f}")
     
-    # 构建结果字符串，批量写入
     result_lines = [
         f"\n{model_name} 模型测试结果:",
         f"MAE: {mae:.4f}",
@@ -160,11 +168,10 @@ def evaluate_model(model, X_test, y_test, model_name):
     for pred, actual in zip(y_pred, y_test):
         result_lines.append(f"{pred:.4f},{actual:.4f}")
     
-    # 批量写入文件
-    with open('test_result.txt', 'a', encoding='utf-8') as f:
+    with open(output_file, 'a', encoding='utf-8') as f:
         f.write('\n'.join(result_lines) + '\n')
     
-    return mae, rmse, r2
+    return mae, rmse, r2, y_pred
 
 
 def save_models(ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model, suffix=""):
