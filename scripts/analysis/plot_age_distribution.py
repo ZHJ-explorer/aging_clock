@@ -34,27 +34,33 @@ def plot_age_distribution_histogram():
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
 
+    y_under20 = merged_df[merged_df['age'] < 20]['age']
+
     print(f"训练集样本数: {len(y_train)}")
     print(f"验证集样本数: {len(y_val)}")
     print(f"测试集样本数: {len(y_test)}")
+    print(f"年龄<20样本数: {len(y_under20)}")
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(14, 6))
 
-    bins = np.arange(10, 100, 10)
+    bins = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
     bin_centers = 0.5 * (bins[:-1] + bins[1:])
     bin_width = bins[1] - bins[0]
 
+    hist_under20, _ = np.histogram(y_under20, bins=bins)
     hist_train, _ = np.histogram(y_train, bins=bins)
     hist_val, _ = np.histogram(y_val, bins=bins)
     hist_test, _ = np.histogram(y_test, bins=bins)
 
     bar_width = bin_width * 0.8
 
-    ax.bar(bin_centers, hist_train, width=bar_width, 
+    ax.bar(bin_centers, hist_under20, width=bar_width, 
+           label=f'Age<20 (n={len(y_under20)})', color='#95a5a6', edgecolor='white', alpha=0.8)
+    ax.bar(bin_centers, hist_train, width=bar_width, bottom=hist_under20, 
            label=f'Training (n={len(y_train)})', color='#2ecc71', edgecolor='white', alpha=0.8)
-    ax.bar(bin_centers, hist_val, width=bar_width, bottom=hist_train, 
+    ax.bar(bin_centers, hist_val, width=bar_width, bottom=hist_under20 + hist_train, 
            label=f'Validation (n={len(y_val)})', color='#3498db', edgecolor='white', alpha=0.8)
-    ax.bar(bin_centers, hist_test, width=bar_width, bottom=hist_train + hist_val, 
+    ax.bar(bin_centers, hist_test, width=bar_width, bottom=hist_under20 + hist_train + hist_val, 
            label=f'Test (n={len(y_test)})', color='#e74c3c', edgecolor='white', alpha=0.8)
 
     handles, labels = ax.get_legend_handles_labels()
