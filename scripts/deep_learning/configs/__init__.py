@@ -1,4 +1,3 @@
-from ..configs.dnn_config import DNNConfig
-from ..models.neural_networks.dnn import DeepMLP, ResNetMLP
+from .dnn_config import DNNConfig
 
-__all__ = ['DNNConfig', 'DeepMLP', 'ResNetMLP']
+__all__ = ['DNNConfig']

@@ -1,3 +1,4 @@
-from .attention import Transformer, TabNet
+from .transformer import Transformer
+from .tabnet import TabNet
 
 __all__ = ['Transformer', 'TabNet']

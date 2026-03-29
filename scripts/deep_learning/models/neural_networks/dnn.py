@@ -111,34 +111,30 @@ class ResNetMLP(BaseDeepModel):
     def __init__(
         self,
         input_dim: int,
-        hidden_dims: List[int] = None,
-        n_res_blocks: int = 3,
+        hidden_dim: int = 256,
+        n_res_blocks: int = 4,
         dropout: float = 0.3,
         use_batchnorm: bool = True,
         output_dim: int = 1
     ):
         super().__init__(input_dim, output_dim)
 
-        if hidden_dims is None:
-            hidden_dims = [512, 256, 128]
-
-        self.hidden_dims = hidden_dims
+        self.hidden_dim = hidden_dim
         self.n_res_blocks = n_res_blocks
 
         layers = []
-        prev_dim = input_dim
 
-        layers.append(nn.Linear(input_dim, hidden_dims[0]))
+        layers.append(nn.Linear(input_dim, hidden_dim))
         if use_batchnorm:
-            layers.append(nn.BatchNorm1d(hidden_dims[0]))
+            layers.append(nn.BatchNorm1d(hidden_dim))
         layers.append(nn.ReLU())
         layers.append(nn.Dropout(dropout))
 
-        for dim in hidden_dims:
-            layers.append(ResBlock(dim, dropout, use_batchnorm))
+        for _ in range(n_res_blocks):
+            layers.append(ResBlock(hidden_dim, dropout, use_batchnorm))
 
         self.feature_extractor = nn.Sequential(*layers)
-        self.output_layer = nn.Linear(hidden_dims[-1], output_dim)
+        self.output_layer = nn.Linear(hidden_dim, output_dim)
 
         self._init_weights()
 

@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Optional
 
 from ..base.base_model import BaseDeepModel
-from ..models.neural_networks.dnn import DeepMLP
+from ..neural_networks.dnn import DeepMLP
 
 
 class DLEnsemble(BaseDeepModel):

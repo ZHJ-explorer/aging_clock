@@ -40,24 +40,31 @@ class Conv1DBlock(nn.Module):
 class ResidualConv1DBlock(nn.Module):
     def __init__(
         self,
-        channels: int,
+        in_channels: int,
+        out_channels: int,
         kernel_size: int = 3,
+        stride: int = 1,
         dropout: float = 0.3
     ):
         super().__init__()
 
-        self.conv1 = nn.Conv1d(channels, channels, kernel_size=kernel_size, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm1d(channels)
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(out_channels)
         self.activation = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
 
-        self.conv2 = nn.Conv1d(channels, channels, kernel_size=kernel_size, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm1d(channels)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm1d(out_channels)
+
+        self.downsample = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride) if in_channels != out_channels or stride != 1 else None
 
         self.final_activation = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = x
+
+        if self.downsample is not None:
+            residual = self.downsample(residual)
 
         out = self.conv1(x)
         out = self.bn1(out)
@@ -94,27 +101,16 @@ class CNN1D(BaseDeepModel):
         layers = []
         in_channels = 1
 
-        for out_channels in hidden_channels:
-            if use_batchnorm:
-                layers.append(nn.BatchNorm1d(in_channels if len(layers) == 0 else hidden_channels[len(layers) - 1]))
-
+        for i, out_channels in enumerate(hidden_channels):
             layers.append(
-                nn.Conv1d(
-                    in_channels if len(layers) == 0 else hidden_channels[len(layers) // 4],
-                    out_channels,
+                Conv1DBlock(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
                     kernel_size=kernel_size,
-                    stride=1,
-                    padding=kernel_size // 2
+                    dropout=dropout
                 )
             )
-
-            if use_batchnorm:
-                layers.append(nn.BatchNorm1d(out_channels))
-
-            layers.append(nn.ReLU())
             layers.append(nn.MaxPool1d(kernel_size=2, stride=2))
-            layers.append(nn.Dropout(dropout))
-
             in_channels = out_channels
 
         self.conv_layers = nn.Sequential(*layers)
@@ -166,7 +162,7 @@ class ResCNN1D(BaseDeepModel):
         input_dim: int,
         output_dim: int = 1,
         hidden_channels: List[int] = None,
-        n_res_blocks: int = 3,
+        n_res_blocks: int = 2,
         kernel_size: int = 3,
         dropout: float = 0.3
     ):
@@ -183,13 +179,21 @@ class ResCNN1D(BaseDeepModel):
         self.input_pool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
 
         self.conv_blocks = nn.ModuleList()
+        in_ch = hidden_channels[0]
         for ch in hidden_channels:
-            self.conv_blocks.append(
-                nn.ModuleList([
-                    ResidualConv1DBlock(ch, kernel_size, dropout)
-                    for _ in range(n_res_blocks)
-                ])
-            )
+            blocks = []
+            for _ in range(n_res_blocks):
+                blocks.append(
+                    ResidualConv1DBlock(
+                        in_channels=in_ch,
+                        out_channels=ch,
+                        kernel_size=kernel_size,
+                        stride=1,
+                        dropout=dropout
+                    )
+                )
+                in_ch = ch
+            self.conv_blocks.append(nn.ModuleList(blocks))
 
         self.global_pool = nn.AdaptiveAvgPool1d(1)
 

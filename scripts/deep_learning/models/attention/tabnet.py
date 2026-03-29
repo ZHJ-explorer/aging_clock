@@ -15,27 +15,22 @@ class TabNet(BaseDeepModel):
         n_a: int = 64,
         n_steps: int = 3,
         gamma: float = 1.3,
-        n_independent: int = 2,
-        n_shared: int = 2,
         epsilon: float = 1e-15,
-        momentum: float = 0.02,
-        mask_type: str = 'sparsemax'
+        momentum: float = 0.02
     ):
         super().__init__(input_dim, output_dim)
 
         self.n_d = n_d
-        self.n_a = n_a
+        self.n_a = n_a if n_a >= input_dim else input_dim
         self.n_steps = n_steps
         self.gamma = gamma
         self.epsilon = epsilon
 
-        self.initial_layer = nn.Linear(input_dim, n_d + n_a, bias=False)
+        self.initial_mapping = nn.Linear(input_dim, n_d + self.n_a, bias=False)
 
         self.batch_norm = nn.BatchNorm1d(input_dim, momentum=momentum)
 
         self.fc_transformers = nn.ModuleList()
-        self.batch_norm_steps = nn.ModuleList()
-
         for step in range(n_steps):
             self.fc_transformers.append(
                 nn.Sequential(
@@ -43,9 +38,6 @@ class TabNet(BaseDeepModel):
                     nn.BatchNorm1d(n_d * 2, momentum=momentum),
                     nn.ReLU()
                 )
-            )
-            self.batch_norm_steps.append(
-                nn.BatchNorm1d(n_d, momentum=momentum)
             )
 
         self.final_mapping = nn.Linear(n_d, output_dim)
@@ -66,31 +58,24 @@ class TabNet(BaseDeepModel):
 
         prior_scales = torch.ones(batch_size, self.input_dim, device=x.device)
 
-        total_entropy = 0
-
-        processed_x = self.initial_layer(x)
+        processed_x = self.initial_mapping(x)
         d = processed_x[:, :self.n_d]
         a = processed_x[:, self.n_d:]
         scale_agg = d
 
         for step in range(self.n_steps):
             if step > 0:
-                mask_values = torch.softmax(a, dim=-1)
-                total_entropy += torch.mean(
-                    torch.sum(-mask_values * torch.log(mask_values + self.epsilon), dim=-1)
-                )
+                a_truncated = a[:, :self.input_dim]
+                mask_values = torch.softmax(a_truncated, dim=-1)
                 prior_scales = prior_scales * self.gamma * (1 - mask_values)
 
-                masked_x = x * prior_scales[:, :-1].expand_as(x)
-                processed_x = self.initial_layer(masked_x)
+                masked_x = x * prior_scales
+                processed_x = self.initial_mapping(masked_x)
                 d = processed_x[:, :self.n_d]
                 a = processed_x[:, self.n_d:]
 
             d = self.fc_transformers[step](d)
-            d = self.batch_norm_steps[step](d)
-            d = nn.ReLU()(d)
-
-            scale_agg = scale_agg + d
+            scale_agg = scale_agg + d[:, :self.n_d]
 
         scale_agg = scale_agg / self.n_steps
 

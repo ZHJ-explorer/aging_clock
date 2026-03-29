@@ -48,9 +48,10 @@ class BaseDeepModel(nn.Module, ABC):
     @classmethod
     def load(cls, path: str, **kwargs) -> 'BaseDeepModel':
         checkpoint = torch.load(path, map_location='cpu')
+        model_kwargs = {k: v for k, v in kwargs.items() if k not in ['input_dim', 'output_dim']}
         model = cls(input_dim=checkpoint['input_dim'],
                     output_dim=checkpoint['output_dim'],
-                    **kwargs)
+                    **model_kwargs)
         model.load_state_dict(checkpoint['model_state_dict'])
         return model
 
