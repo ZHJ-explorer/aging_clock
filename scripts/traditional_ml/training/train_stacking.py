@@ -16,8 +16,8 @@ from sklearn.model_selection import RepeatedKFold
 from xgboost import XGBRegressor
 from scripts.utils.data_utils import split_data
 from scripts.utils.model_utils import evaluate_model
-from scripts.model_training.optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
-from scripts.analysis.plot_results import convert_test_result_to_image
+from scripts.traditional_ml.optimization.optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
+from scripts.analysis.visualization.plot_results import convert_test_result_to_image
 
 
 class Config:
