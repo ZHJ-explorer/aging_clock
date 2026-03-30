@@ -1,0 +1,9 @@
+{
+  "hidden_dim": 256,
+  "n_res_blocks": 5,
+  "dropout": 0.3101059582590581,
+  "use_batchnorm": true,
+  "lr": 0.007688781061582465,
+  "weight_decay": 2.52918454577263e-06,
+  "batch_size": 64
+}

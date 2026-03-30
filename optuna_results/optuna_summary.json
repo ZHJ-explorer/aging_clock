@@ -1,0 +1,37 @@
+{
+  "best_params": {
+    "deepmlp": {
+      "n_layers": 3,
+      "base_dim": 128,
+      "dropout": 0.1631073256297944,
+      "use_batchnorm": true,
+      "activation": "relu",
+      "lr": 0.0052320153352142145,
+      "weight_decay": 3.151008575895581e-06,
+      "batch_size": 16
+    },
+    "resnetmlp": {
+      "hidden_dim": 256,
+      "n_res_blocks": 5,
+      "dropout": 0.3101059582590581,
+      "use_batchnorm": true,
+      "lr": 0.007688781061582465,
+      "weight_decay": 2.52918454577263e-06,
+      "batch_size": 64
+    },
+    "tabnet": {
+      "n_d": 128,
+      "n_a": 128,
+      "n_steps": 2,
+      "lr": 0.00534516611064682,
+      "weight_decay": 1.0842262717330169e-05,
+      "batch_size": 16
+    }
+  },
+  "best_validation_mae": {
+    "deepmlp": 8.914213119014617,
+    "resnetmlp": 8.945596510364163,
+    "tabnet": 9.343656642462618
+  },
+  "feature_count": 728
+}
