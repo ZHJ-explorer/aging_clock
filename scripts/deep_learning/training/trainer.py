@@ -50,10 +50,14 @@ class Trainer:
         self.patience_counter = 0
         self.is_early_stopped = False
 
-    def train_epoch(self, train_loader: DataLoader) -> float:
+    def train_epoch(self, train_loader: DataLoader) -> Dict[str, float]:
         self.model.train()
         total_loss = 0
+        total_mae = 0
         n_samples = 0
+
+        all_predictions = []
+        all_targets = []
 
         for batch_x, batch_y in train_loader:
             batch_x = batch_x.to(self.device)
@@ -80,29 +84,29 @@ class Trainer:
             self.optimizer.step()
 
             total_loss += loss.item() * len(batch_x)
+            total_mae += torch.abs(outputs - batch_y).sum().item()
             n_samples += len(batch_x)
 
-        return total_loss / n_samples
+            all_predictions.extend(outputs.detach().cpu().numpy())
+            all_targets.extend(batch_y.cpu().numpy())
 
-    def validate(self, val_loader: DataLoader) -> float:
-        self.model.eval()
-        total_loss = 0
-        n_samples = 0
+        predictions = np.array(all_predictions)
+        targets = np.array(all_targets)
 
-        with torch.no_grad():
-            for batch_x, batch_y in val_loader:
-                batch_x = batch_x.to(self.device)
-                batch_y = batch_y.to(self.device)
+        mae = total_mae / n_samples
+        ss_res = np.sum((targets - predictions) ** 2)
+        ss_tot = np.sum((targets - targets.mean()) ** 2)
+        r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0
 
-                outputs = self.model(batch_x)
-                loss = self.criterion(outputs, batch_y)
+        return {
+            'loss': total_loss / n_samples,
+            'mae': mae,
+            'r2': r2,
+            'predictions': predictions,
+            'targets': targets
+        }
 
-                total_loss += loss.item() * len(batch_x)
-                n_samples += len(batch_x)
-
-        return total_loss / n_samples
-
-    def evaluate(self, data_loader: DataLoader) -> Dict[str, float]:
+    def validate(self, val_loader: DataLoader) -> Dict[str, float]:
         self.model.eval()
         total_loss = 0
         total_mae = 0
@@ -112,7 +116,7 @@ class Trainer:
         targets = []
 
         with torch.no_grad():
-            for batch_x, batch_y in data_loader:
+            for batch_x, batch_y in val_loader:
                 batch_x = batch_x.to(self.device)
                 batch_y = batch_y.to(self.device)
 
@@ -145,6 +149,9 @@ class Trainer:
             'targets': targets
         }
 
+    def evaluate(self, data_loader: DataLoader) -> Dict[str, float]:
+        return self.validate(data_loader)
+
     def fit(
         self,
         train_loader: DataLoader,
@@ -160,20 +167,17 @@ class Trainer:
             os.makedirs(save_dir, exist_ok=True)
 
         for epoch in range(epochs):
-            train_loss = self.train_epoch(train_loader)
-            val_loss = self.validate(val_loader)
+            train_metrics = self.train_epoch(train_loader)
+            val_metrics = self.validate(val_loader)
 
-            train_metrics = self.evaluate(train_loader)
-            val_metrics = self.evaluate(val_loader)
-
-            self.history['train_loss'].append(train_loss)
-            self.history['val_loss'].append(val_loss)
+            self.history['train_loss'].append(train_metrics['loss'])
+            self.history['val_loss'].append(val_metrics['loss'])
             self.history['train_mae'].append(train_metrics['mae'])
             self.history['val_mae'].append(val_metrics['mae'])
 
             if self.scheduler is not None:
                 if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    self.scheduler.step(val_loss)
+                    self.scheduler.step(val_metrics['loss'])
                 else:
                     self.scheduler.step()
 
@@ -182,18 +186,18 @@ class Trainer:
             if (epoch + 1) % 10 == 0 or epoch == 0:
                 logger.info(
                     f"Epoch {epoch+1}/{epochs} - "
-                    f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, "
+                    f"Train Loss: {train_metrics['loss']:.4f}, Val Loss: {val_metrics['loss']:.4f}, "
                     f"Train MAE: {train_metrics['mae']:.4f}, Val MAE: {val_metrics['mae']:.4f}, "
                     f"Train R2: {train_metrics['r2']:.4f}, Val R2: {val_metrics['r2']:.4f}, "
                     f"LR: {current_lr:.6f}"
                 )
 
-            if val_loss < self.best_val_loss:
-                self.best_val_loss = val_loss
+            if val_metrics['loss'] < self.best_val_loss:
+                self.best_val_loss = val_metrics['loss']
                 self.patience_counter = 0
                 if save_dir:
                     self.model.save(os.path.join(save_dir, 'best_model.pt'))
-                logger.info(f"New best model saved with val_loss: {val_loss:.4f}")
+                logger.info(f"New best model saved with val_loss: {val_metrics['loss']:.4f}")
             else:
                 self.patience_counter += 1
                 if self.patience_counter >= self.early_stopping_patience:
@@ -206,7 +210,7 @@ class Trainer:
 
             if callbacks:
                 for callback in callbacks:
-                    callback(epoch, train_loss, val_loss)
+                    callback(epoch, train_metrics['loss'], val_metrics['loss'])
 
         if save_dir:
             self.save_checkpoint(os.path.join(save_dir, 'last_checkpoint.pt'))
