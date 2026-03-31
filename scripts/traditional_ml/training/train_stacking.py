@@ -15,6 +15,7 @@ from sklearn.linear_model import LassoCV
 from sklearn.model_selection import RepeatedKFold
 from xgboost import XGBRegressor
 from scripts.utils.data_utils import split_data
+from scripts.utils.data_pipeline import load_and_preprocess_merged_data
 from scripts.utils.model_utils import evaluate_model
 from scripts.traditional_ml.optimization.optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
 from scripts.analysis.visualization.plot_results import convert_test_result_to_image
@@ -66,45 +67,15 @@ def main():
     
     logger.info("开始重构Stacking训练流程...")
     start_time = time.time()
-    
+
     with open('test_result_stacking.txt', 'w', encoding='utf-8') as f:
         f.write("重构Stacking模型测试结果\n")
         f.write("=" * 50 + "\n")
-    
-    merged_csv = os.path.join(Config.PREPROCESSED_DIR, 'merged_scaled.csv')
-    if os.path.exists(merged_csv):
-        logger.info(f"从 {merged_csv} 加载已处理的数据集...")
-        merged_df = pd.read_csv(merged_csv, index_col=0)
-        logger.info(f"加载完成，样本数: {len(merged_df)}")
-    else:
-        logger.error("merged_scaled.csv 不存在，请先运行主流程生成数据")
+
+    merged_df, _, _, _, _, _, _, _ = load_and_preprocess_merged_data(min_age=20)
+    if merged_df is None:
         return
-    
-    numeric_columns = merged_df.select_dtypes(include=[np.number]).columns
-    if 'age' not in numeric_columns:
-        numeric_columns = list(numeric_columns) + ['age']
-    merged_df = merged_df[numeric_columns]
-    logger.info(f"保留了 {len(merged_df.columns) - 1} 个数值型特征")
-    
-    logger.info("处理NaN值...")
-    merged_df = merged_df.dropna(axis=1, how='any')
-    logger.info(f"删除NaN列后，特征数: {len(merged_df.columns) - 1}")
-    
-    if len(merged_df.columns) <= 1:
-        logger.error("错误：没有特征可用")
-        exit(1)
-    
-    merged_df = merged_df.dropna()
-    logger.info(f"删除NaN行后，样本数: {len(merged_df)}")
-    
-    # 过滤掉年龄小于20的样本，只使用20及以上的样本
-    merged_df = merged_df[merged_df['age'] >= 20]
-    logger.info(f"过滤后（年龄>=20）样本数: {len(merged_df)}")
-    
-    if len(merged_df) == 0:
-        logger.error("错误：没有样本可用")
-        exit(1)
-    
+
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
     
     logger.info("\n=== 步骤1: 基于XGBoost特征重要性选择特征 ===")
