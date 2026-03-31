@@ -18,6 +18,7 @@ GSE164191_processed.csv
 # 临时文件
 *.tmp
 *.temp
+*.log
 
 # IDE 文件
 .vscode/
