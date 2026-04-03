@@ -8,107 +8,67 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import joblib
 import os
 import logging
-from hyperparameter_tuning import tune_all_models
+import xgboost as xgb
 
-# 配置日志
 logger = logging.getLogger(__name__)
-
-# 模型目录
 MODELS_DIR = 'models'
 
 
-import xgboost as xgb
-
-def train_models(X_train, y_train, X_val, y_val, use_hyperparameter_tuning=False):
+def train_models(X_train, y_train, X_val, y_val):
     """训练多个模型"""
     logger.info("训练模型...")
-    
-    # 定义基模型，优化参数
-    logger.info("初始化基模型...")
     from sklearn.linear_model import Lasso
-    
-    if use_hyperparameter_tuning:
-        logger.info("使用超参数调优...")
-        # 调优树模型和SVR
-        xgb_model, lgb_model, rf_model, svr_model = tune_all_models(X_train, y_train, X_val, y_val)
-        
-        # 线性模型使用默认参数
-        ridge_model = Ridge(alpha=1.0, random_state=42)
-        lasso_model = Lasso(alpha=0.01, random_state=42, max_iter=10000)
-        en_model = ElasticNet(alpha=0.01, l1_ratio=0.5, random_state=42, max_iter=10000)
-        
-        # 训练线性模型
-        logger.info("训练Ridge模型...")
-        ridge_model.fit(X_train, y_train)
-        
-        logger.info("训练LASSO模型...")
-        lasso_model.fit(X_train, y_train)
-        
-        logger.info("训练ElasticNet模型...")
-        en_model.fit(X_train, y_train)
-        
-        # 构建训练好的模型列表
-        trained_base_models = [
-            ('xgboost', xgb_model),
-            ('lightgbm', lgb_model),
-            ('random_forest', rf_model),
-            ('svr', svr_model),
-            ('ridge', ridge_model),
-            ('lasso', lasso_model),
-            ('elasticnet', en_model)
-        ]
-    else:
-        logger.info("使用默认参数...")
-        base_models = [
-            ('xgboost', xgb.XGBRegressor(
-                n_estimators=500, 
-                learning_rate=0.01, 
-                max_depth=6, 
-                min_child_weight=1, 
-                subsample=0.8, 
-                colsample_bytree=0.8, 
-                random_state=42, 
-                n_jobs=-1
-            )),
-            ('lightgbm', lgb.LGBMRegressor(
-                n_estimators=500, 
-                learning_rate=0.01, 
-                max_depth=6, 
-                num_leaves=31, 
-                subsample=0.8, 
-                colsample_bytree=0.8, 
-                random_state=42, 
-                verbose=-1, 
-                n_jobs=-1
-            )),
-            ('ridge', Ridge(alpha=1.0, random_state=42)),
-            ('lasso', Lasso(alpha=0.01, random_state=42, max_iter=10000)),
-            ('elasticnet', ElasticNet(alpha=0.01, l1_ratio=0.5, random_state=42, max_iter=10000)),
-            ('svr', SVR(kernel='rbf', C=100.0, gamma='scale', cache_size=1000)),
-            ('random_forest', RandomForestRegressor(
-                n_estimators=100, 
-                max_depth=10, 
-                random_state=42, 
-                n_jobs=-1
-            ))
-        ]
-        
-        # 使用joblib并行训练基模型
-        from joblib import Parallel, delayed
-        
-        def train_model(name, model):
-            logger.info(f"训练{name}模型...")
-            if name == 'lightgbm':
-                model.fit(X_train, y_train, eval_set=[(X_val, y_val)], eval_metric='mae')
-            elif name == 'xgboost':
-                model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
-            else:
-                model.fit(X_train, y_train)
-            return (name, model)
-        
-        trained_base_models = Parallel(n_jobs=-1)(
-            delayed(train_model)(name, model) for name, model in base_models
-        )
+
+    logger.info("使用默认参数...")
+    base_models = [
+        ('xgboost', xgb.XGBRegressor(
+            n_estimators=500,
+            learning_rate=0.01,
+            max_depth=6,
+            min_child_weight=1,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=42,
+            n_jobs=-1
+        )),
+        ('lightgbm', lgb.LGBMRegressor(
+            n_estimators=500,
+            learning_rate=0.01,
+            max_depth=6,
+            num_leaves=31,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=42,
+            verbose=-1,
+            n_jobs=-1
+        )),
+        ('ridge', Ridge(alpha=1.0, random_state=42)),
+        ('lasso', Lasso(alpha=0.01, random_state=42, max_iter=10000)),
+        ('elasticnet', ElasticNet(alpha=0.01, l1_ratio=0.5, random_state=42, max_iter=10000)),
+        ('svr', SVR(kernel='rbf', C=100.0, gamma='scale', cache_size=1000)),
+        ('random_forest', RandomForestRegressor(
+            n_estimators=100,
+            max_depth=10,
+            random_state=42,
+            n_jobs=-1
+        ))
+    ]
+
+    from joblib import Parallel, delayed
+
+    def train_model(name, model):
+        logger.info(f"训练{name}模型...")
+        if name == 'lightgbm':
+            model.fit(X_train, y_train, eval_set=[(X_val, y_val)], eval_metric='mae')
+        elif name == 'xgboost':
+            model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
+        else:
+            model.fit(X_train, y_train)
+        return (name, model)
+
+    trained_base_models = Parallel(n_jobs=-1)(
+        delayed(train_model)(name, model) for name, model in base_models
+    )
     
     # 训练Stacking模型，使用10折交叉验证
     logger.info("训练Stacking模型...")
