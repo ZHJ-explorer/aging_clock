@@ -20,11 +20,14 @@ from scripts.deep_learning.training.optimizer import build_optimizer, build_sche
 from scripts.utils.data_utils import split_data
 
 
+LOG_DIR = 'results/logs'
+os.makedirs(LOG_DIR, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('training_dnn.log', encoding='utf-8'),
+        logging.FileHandler(os.path.join(LOG_DIR, 'training_dnn.log'), encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -166,6 +169,12 @@ def main():
         epochs=dnn_config.epochs,
         save_dir=save_dir
     )
+
+    logger.info("\n训练完成! 保存训练历史...")
+    history_df = pd.DataFrame(history)
+    history_csv_path = os.path.join(save_dir, 'training_history.csv')
+    history_df.to_csv(history_csv_path, index=False)
+    logger.info(f"训练历史已保存: {history_csv_path}")
 
     logger.info("\n在测试集上评估...")
     test_dataset = DatasetWrapper(X_test, y_test)

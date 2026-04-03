@@ -4,9 +4,12 @@ import pandas as pd
 import numpy as np
 import warnings
 import multiprocessing
+import matplotlib.pyplot as plt
 from multiprocessing import Process, Queue
 
-# 导入ConvergenceWarning
+plt.rcParams['font.sans-serif'] = ['Arial']
+plt.rcParams['axes.unicode_minus'] = False
+
 from sklearn.exceptions import ConvergenceWarning
 
 # 抑制警告信息
@@ -162,8 +165,26 @@ def train_microarray_models():
     
     # 训练模型
     print("训练微阵列数据模型...")
-    ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model = train_models(X_train_selected, y_train, X_val_selected, y_val)
-    
+    ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model, model_histories = train_models(X_train_selected, y_train, X_val_selected, y_val)
+
+    print("\n生成训练过程可视化...")
+    for model_name, history in model_histories.items():
+        if history and history.get('train_loss'):
+            epochs = range(1, len(history['train_loss']) + 1)
+            plt.figure(figsize=(10, 6))
+            plt.plot(epochs, history['train_loss'], 'b-', label='Train Loss', linewidth=2)
+            if history.get('val_loss'):
+                plt.plot(epochs, history['val_loss'], 'r-', label='Val Loss', linewidth=2)
+            plt.xlabel('Iteration', fontsize=12)
+            plt.ylabel('Loss (MSE)', fontsize=12)
+            plt.title(f'{model_name}: Training Loss Curve', fontsize=14)
+            plt.legend(fontsize=10)
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plt.savefig(os.path.join(PLOTS_DIR, f'{model_name.lower()}_training_loss.png'), dpi=150)
+            plt.close()
+            print(f"  {model_name} 训练曲线已保存到 {PLOTS_DIR}/")
+
     # 评估模型
     print("\n微阵列数据模型评估结果:")
     evaluate_model(ridge_model, X_test_selected, y_test, "Ridge (Microarray)")
@@ -282,8 +303,26 @@ def train_rnaseq_models():
             
             # 训练模型
             print("训练RNA-seq数据模型...")
-            ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model = train_models(X_train_selected, y_train, X_val_selected, y_val)
-            
+            ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model, model_histories = train_models(X_train_selected, y_train, X_val_selected, y_val)
+
+            print("\n生成训练过程可视化...")
+            for model_name, history in model_histories.items():
+                if history and history.get('train_loss'):
+                    epochs = range(1, len(history['train_loss']) + 1)
+                    plt.figure(figsize=(10, 6))
+                    plt.plot(epochs, history['train_loss'], 'b-', label='Train Loss', linewidth=2)
+                    if history.get('val_loss'):
+                        plt.plot(epochs, history['val_loss'], 'r-', label='Val Loss', linewidth=2)
+                    plt.xlabel('Iteration', fontsize=12)
+                    plt.ylabel('Loss (MSE)', fontsize=12)
+                    plt.title(f'{model_name}: Training Loss Curve', fontsize=14)
+                    plt.legend(fontsize=10)
+                    plt.grid(True, alpha=0.3)
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(PLOTS_DIR, f'{model_name.lower()}_training_loss.png'), dpi=150)
+                    plt.close()
+                    print(f"  {model_name} 训练曲线已保存到 {PLOTS_DIR}/")
+
             # 评估模型
             print("\nRNA-seq数据模型评估结果:")
             evaluate_model(ridge_model, X_test_selected, y_test, "Ridge (RNA-seq)")
@@ -329,8 +368,26 @@ def train_rnaseq_models():
     
     # 训练模型
     print("训练RNA-seq数据模型...")
-    ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model = train_models(X_train_selected, y_train, X_val_selected, y_val)
-    
+    ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model, model_histories = train_models(X_train_selected, y_train, X_val_selected, y_val)
+
+    print("\n生成训练过程可视化...")
+    for model_name, history in model_histories.items():
+        if history and history.get('train_loss'):
+            epochs = range(1, len(history['train_loss']) + 1)
+            plt.figure(figsize=(10, 6))
+            plt.plot(epochs, history['train_loss'], 'b-', label='Train Loss', linewidth=2)
+            if history.get('val_loss'):
+                plt.plot(epochs, history['val_loss'], 'r-', label='Val Loss', linewidth=2)
+            plt.xlabel('Iteration', fontsize=12)
+            plt.ylabel('Loss (MSE)', fontsize=12)
+            plt.title(f'{model_name}: Training Loss Curve', fontsize=14)
+            plt.legend(fontsize=10)
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plt.savefig(os.path.join(PLOTS_DIR, f'{model_name.lower()}_training_loss.png'), dpi=150)
+            plt.close()
+            print(f"  {model_name} 训练曲线已保存到 {PLOTS_DIR}/")
+
     # 评估模型
     print("\nRNA-seq数据模型评估结果:")
     evaluate_model(ridge_model, X_test_selected, y_test, "Ridge (RNA-seq)")
@@ -401,7 +458,25 @@ def train_combined_model():
     
     # 训练模型
     print("训练合并数据模型...")
-    ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model = train_models(X_train_selected, y_train, X_val_selected, y_val)
+    ridge_model, lasso_model, en_model, xgb_model, lgb_model, svr_model, stacking_model, model_histories = train_models(X_train_selected, y_train, X_val_selected, y_val)
+
+    print("\n生成训练过程可视化...")
+    for model_name, history in model_histories.items():
+        if history and history.get('train_loss'):
+            epochs = range(1, len(history['train_loss']) + 1)
+            plt.figure(figsize=(10, 6))
+            plt.plot(epochs, history['train_loss'], 'b-', label='Train Loss', linewidth=2)
+            if history.get('val_loss'):
+                plt.plot(epochs, history['val_loss'], 'r-', label='Val Loss', linewidth=2)
+            plt.xlabel('Iteration', fontsize=12)
+            plt.ylabel('Loss (MSE)', fontsize=12)
+            plt.title(f'{model_name}: Training Loss Curve', fontsize=14)
+            plt.legend(fontsize=10)
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plt.savefig(os.path.join(PLOTS_DIR, f'{model_name.lower()}_training_loss.png'), dpi=150)
+            plt.close()
+            print(f"  {model_name} 训练曲线已保存到 {PLOTS_DIR}/")
     
     # 评估模型
     print("\n合并数据模型评估结果:")

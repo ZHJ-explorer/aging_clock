@@ -1,11 +1,11 @@
-from .visualization import plot_results, plot_age_distribution
-from .explainability import shap_analysis, shap_analysis_xgb_mlp
+from .visualization import convert_test_result_to_image, plot_age_distribution_histogram
+from .explainability import run_shap_analysis, run_shap_analysis_xgb_mlp
 from .statistics import pca_analysis
 
 __all__ = [
-    'plot_results',
-    'plot_age_distribution',
-    'shap_analysis',
-    'shap_analysis_xgb_mlp',
+    'convert_test_result_to_image',
+    'plot_age_distribution_histogram',
+    'run_shap_analysis',
+    'run_shap_analysis_xgb_mlp',
     'pca_analysis'
 ]

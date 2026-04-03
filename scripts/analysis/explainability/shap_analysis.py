@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 import joblib
@@ -6,7 +7,8 @@ import logging
 import xgboost as xgb
 import shap
 import matplotlib.pyplot as plt
-from data_utils import split_data
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from scripts.utils.data_utils import split_data
 
 
 class Config:
