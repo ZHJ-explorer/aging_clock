@@ -1,7 +1,34 @@
 import torch
+import numpy as np
 from typing import Optional, Dict, Any
 from torch.optim import AdamW, SGD, Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau, StepLR, ExponentialLR
+
+
+class WarmupCosineScheduler:
+    def __init__(self, optimizer, warmup_epochs: int, total_epochs: int, base_lr: float, min_lr: float = 1e-6):
+        self.optimizer = optimizer
+        self.warmup_epochs = warmup_epochs
+        self.total_epochs = total_epochs
+        self.base_lr = base_lr
+        self.min_lr = min_lr
+        self.current_epoch = 0
+
+    def step(self, epoch: Optional[int] = None):
+        if epoch is not None:
+            self.current_epoch = epoch
+
+        if self.current_epoch < self.warmup_epochs:
+            lr = self.base_lr * (self.current_epoch + 1) / self.warmup_epochs
+        else:
+            progress = (self.current_epoch - self.warmup_epochs) / max(1, self.total_epochs - self.warmup_epochs)
+            lr = self.min_lr + (self.base_lr - self.min_lr) * (1 + np.cos(np.pi * progress)) / 2
+
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
+
+    def get_last_lr(self):
+        return [group['lr'] for group in self.optimizer.param_groups]
 
 
 def build_optimizer(model, optimizer_name: str = 'adamw', learning_rate: float = 0.001,
@@ -67,5 +94,14 @@ def build_scheduler(optimizer: torch.optim.Optimizer, scheduler_name: str = 'cos
         )
     elif scheduler_name == 'none':
         return None
+    elif scheduler_name == 'warmup_cosine':
+        warmup_epochs = kwargs.get('warmup_epochs', 10)
+        return WarmupCosineScheduler(
+            optimizer,
+            warmup_epochs=warmup_epochs,
+            total_epochs=epochs,
+            base_lr=kwargs.get('base_lr', 0.001),
+            min_lr=kwargs.get('eta_min', 1e-6)
+        )
     else:
         raise ValueError(f"Unknown scheduler: {scheduler_name}")

@@ -122,6 +122,7 @@ def train_and_evaluate(model_name, model_class, model_kwargs, X_train, y_train, 
         device=device,
         scheduler=scheduler,
         early_stopping_patience=20,
+        early_stopping_metric='loss',
         l1_reg=0.0,
         l2_reg=1e-4
     )
@@ -136,7 +137,14 @@ def train_and_evaluate(model_name, model_class, model_kwargs, X_train, y_train, 
 
     save_dir = os.path.join(MODELS_DIR, model_name.lower())
     os.makedirs(save_dir, exist_ok=True)
-    model.save(os.path.join(save_dir, 'final_model.pt'))
+
+    best_model_path = os.path.join(save_dir, 'best_model.pt')
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path, map_location=device)['model_state_dict'])
+        logger.info(f"已加载验证集最佳模型进行评估: {best_model_path}")
+
+    model.save(best_model_path)
+    logger.info(f"保存最佳模型到: {best_model_path}")
 
     history_df = pd.DataFrame(history)
     history_df.to_csv(os.path.join(save_dir, 'training_history.csv'), index=False)

@@ -7,6 +7,7 @@ import logging
 import os
 
 from ..models.base.base_model import BaseDeepModel
+from .optimizer import WarmupCosineScheduler
 
 
 logger = logging.getLogger(__name__)
@@ -181,6 +182,8 @@ class Trainer:
             if self.scheduler is not None:
                 if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     self.scheduler.step(val_metrics['loss'])
+                elif isinstance(self.scheduler, WarmupCosineScheduler):
+                    self.scheduler.step(epoch)
                 else:
                     self.scheduler.step()
 
