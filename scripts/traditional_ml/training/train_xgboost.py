@@ -62,57 +62,56 @@ def main():
 
     X = merged_df.drop('age', axis=1)
     y = merged_df['age']
-    
-    logger.info("\n=== 步骤1: 基于XGBoost特征重要性选择特征 ===")
-    selected_features = select_features_xgboost(X, y, n_features=Config.N_FEATURES_XGBOOST)
-    X_selected = X[selected_features]
-    logger.info(f"特征选择后维度: {X_selected.shape[1]}")
-    
-    logger.info("\n=== 步骤2: 使用Optuna调优XGBoost超参数 ===")
+
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
+
+    logger.info("\n=== 步骤1: 只在训练集上进行基于XGBoost特征重要性选择特征 ===")
+    logger.info(f"特征选择只在 {len(X_train)} 个训练样本上进行，避免数据泄漏")
+    selected_features = select_features_xgboost(X_train, y_train, n_features=Config.N_FEATURES_XGBOOST)
+    logger.info(f"特征选择后维度: {len(selected_features)}")
+
+    X_train_selected = X_train[selected_features]
+    X_val_selected = X_val[selected_features]
+    X_test_selected = X_test[selected_features]
+
+    logger.info("\n=== 步骤2: 使用Optuna调优XGBoost超参数（只在训练集上） ===")
     xgb_model, best_params, best_cv_score = tune_xgboost_optuna(
-        X_selected.values, y.values,
+        X_train_selected.values, y_train.values,
         n_trials=Config.OPTUNA_N_TRIALS,
         cv=Config.OPTUNA_CV
     )
     
-    logger.info("\n=== 步骤3: 重复交叉验证评估模型稳定性 ===")
-    # 5折交叉验证，重复3次
+    logger.info("\n=== 步骤3: 重复交叉验证评估模型稳定性（只在训练集上进行） ===")
     rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
-    
+
     r2_scores = []
     mae_scores = []
     rmse_scores = []
-    
-    for fold_idx, (train_idx, test_idx) in enumerate(rkf.split(X_selected)):
-        X_train_fold, X_test_fold = X_selected.iloc[train_idx], X_selected.iloc[test_idx]
-        y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
-        
+
+    for fold_idx, (train_idx, test_idx) in enumerate(rkf.split(X_train_selected)):
+        X_train_fold, X_test_fold = X_train_selected.iloc[train_idx], X_train_selected.iloc[test_idx]
+        y_train_fold, y_test_fold = y_train.iloc[train_idx], y_train.iloc[test_idx]
+
         model = xgb.XGBRegressor(**best_params, random_state=42, n_jobs=-1)
         model.fit(X_train_fold, y_train_fold)
-        
+
         y_pred = model.predict(X_test_fold)
         r2 = r2_score(y_test_fold, y_pred)
         mae = mean_absolute_error(y_test_fold, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test_fold, y_pred))
-        
+
         r2_scores.append(r2)
         mae_scores.append(mae)
         rmse_scores.append(rmse)
-        
+
         logger.info(f"  重复交叉验证第{fold_idx+1}次: R²={r2:.4f}, MAE={mae:.4f}, RMSE={rmse:.4f}")
-    
+
     logger.info("\n=== 重复交叉验证结果汇总 ===")
     logger.info(f"平均R²: {np.mean(r2_scores):.4f} ± {np.std(r2_scores):.4f}")
     logger.info(f"平均MAE: {np.mean(mae_scores):.4f} ± {np.std(mae_scores):.4f}")
     logger.info(f"平均RMSE: {np.mean(rmse_scores):.4f} ± {np.std(rmse_scores):.4f}")
-    
-    # 标准的训练集、验证集、测试集拆分
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
-    X_train_selected = X_train[selected_features]
-    X_val_selected = X_val[selected_features]
-    X_test_selected = X_test[selected_features]
-    
-    # 重新训练模型用于最终评估
+
+    logger.info("\n=== 步骤4: 在训练集上重新训练模型用于最终评估 ===")
     final_model = xgb.XGBRegressor(**best_params, random_state=42, n_jobs=-1)
     final_model.fit(X_train_selected, y_train)
     

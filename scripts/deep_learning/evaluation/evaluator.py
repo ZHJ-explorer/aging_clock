@@ -28,6 +28,72 @@ class Evaluator:
             predictions = self.model(X_tensor).cpu().numpy()
         return predictions
 
+    def predict_with_uncertainty(self, X: np.ndarray, n_samples: int = 50) -> Tuple[np.ndarray, np.ndarray]:
+        """使用MC Dropout进行不确定性估计
+
+        Args:
+            X: 输入数据
+            n_samples: MC采样次数
+
+        Returns:
+            (mean_predictions, std_predictions): 预测均值和标准差
+        """
+        self.model.train()
+
+        X_tensor = torch.FloatTensor(X).to(self.device)
+        if X_tensor.dim() == 1:
+            X_tensor = X_tensor.unsqueeze(0)
+
+        all_predictions = []
+        with torch.no_grad():
+            for _ in range(n_samples):
+                predictions = self.model(X_tensor).cpu().numpy()
+                all_predictions.append(predictions)
+
+        self.model.eval()
+
+        all_predictions = np.array(all_predictions)
+        mean_predictions = np.mean(all_predictions, axis=0)
+        std_predictions = np.std(all_predictions, axis=0)
+
+        return mean_predictions, std_predictions
+
+    def evaluate_with_uncertainty(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_samples: int = 50
+    ) -> Dict[str, float]:
+        """使用MC Dropout评估模型性能及不确定性
+
+        Args:
+            X: 输入数据
+            y: 目标值
+            n_samples: MC采样次数
+
+        Returns:
+            包含评估指标和不确定性统计的字典
+        """
+        mean_preds, std_preds = self.predict_with_uncertainty(X, n_samples)
+
+        mae = mean_absolute_error(y, mean_preds)
+        mse = mean_squared_error(y, mean_preds)
+        rmse = np.sqrt(mse)
+        r2 = r2_score(y, mean_preds)
+
+        coverage_95 = np.mean(np.abs(y - mean_preds) <= 1.96 * std_preds) * 100
+
+        return {
+            'mae': mae,
+            'mse': mse,
+            'rmse': rmse,
+            'r2': r2,
+            'mean_std': np.mean(std_preds),
+            'coverage_95': coverage_95,
+            'predictions': mean_preds,
+            'uncertainties': std_preds
+        }
+
     def evaluate(self, X: np.ndarray, y: np.ndarray) -> Dict[str, float]:
         predictions = self.predict(X)
 

@@ -19,6 +19,7 @@ class DNNConfig:
     batch_size: int = 32
     epochs: int = 200
     early_stopping_patience: int = 20
+    early_stopping_metric: str = 'loss'
 
     scheduler_type: str = 'cosine'
     warmup_epochs: int = 10
@@ -38,6 +39,7 @@ class DNNConfig:
         assert 0 <= self.dropout < 1, "dropout must be in [0, 1)"
         assert self.output_dim > 0, "output_dim must be positive"
         assert self.learning_rate > 0, "learning_rate must be positive"
+        assert self.early_stopping_metric in ['loss', 'mae'], "early_stopping_metric must be 'loss' or 'mae'"
 
     def to_dict(self):
         return {
@@ -53,6 +55,7 @@ class DNNConfig:
             'batch_size': self.batch_size,
             'epochs': self.epochs,
             'early_stopping_patience': self.early_stopping_patience,
+            'early_stopping_metric': self.early_stopping_metric,
             'scheduler_type': self.scheduler_type,
             'warmup_epochs': self.warmup_epochs,
             'l1_reg': self.l1_reg,

@@ -155,6 +155,7 @@ def main():
         device=device,
         scheduler=scheduler,
         early_stopping_patience=dnn_config.early_stopping_patience,
+        early_stopping_metric=dnn_config.early_stopping_metric,
         l1_reg=dnn_config.l1_reg,
         l2_reg=dnn_config.l2_reg
     )
@@ -190,7 +191,12 @@ def main():
     logger.info(f"  R²: {test_results['r2']:.4f}")
     logger.info("=" * 60)
 
-    model.save(os.path.join(save_dir, 'final_model.pt'))
+    best_model_path = os.path.join(save_dir, 'best_model.pt')
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path, map_location=device)['model_state_dict'])
+        logger.info(f"已加载验证集最佳模型: {best_model_path}")
+    model.save(best_model_path)
+    logger.info(f"保存最佳模型到: {best_model_path}")
 
     config_dict = dnn_config.to_dict()
     with open(os.path.join(save_dir, 'config.json'), 'w') as f:
@@ -206,7 +212,7 @@ def main():
     logger.info(f"\n训练完成! 总耗时: {end_time - start_time:.2f} 秒")
 
     logger.info("\n结果保存位置:")
-    logger.info(f"  模型: {os.path.join(save_dir, 'final_model.pt')}")
+    logger.info(f"  模型: {best_model_path}")
     logger.info(f"  配置: {os.path.join(save_dir, 'config.json')}")
     logger.info(f"  预测结果: {os.path.join(save_dir, 'test_predictions.csv')}")
 

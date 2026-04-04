@@ -21,6 +21,7 @@ class Trainer:
         device: Optional[str] = None,
         scheduler: Optional[Any] = None,
         early_stopping_patience: int = 20,
+        early_stopping_metric: str = 'loss',
         l1_reg: float = 0.0,
         l2_reg: float = 1e-4
     ):
@@ -29,6 +30,7 @@ class Trainer:
         self.criterion = criterion
         self.scheduler = scheduler
         self.early_stopping_patience = early_stopping_patience
+        self.early_stopping_metric = early_stopping_metric
         self.l1_reg = l1_reg
         self.l2_reg = l2_reg
 
@@ -47,6 +49,7 @@ class Trainer:
         }
 
         self.best_val_loss = float('inf')
+        self.best_val_mae = float('inf')
         self.patience_counter = 0
         self.is_early_stopped = False
 
@@ -192,18 +195,29 @@ class Trainer:
                     f"LR: {current_lr:.6f}"
                 )
 
-            if val_metrics['loss'] < self.best_val_loss:
-                self.best_val_loss = val_metrics['loss']
+            if self.early_stopping_metric == 'mae':
+                current_metric = val_metrics['mae']
+                is_improvement = current_metric < self.best_val_mae
+                if is_improvement:
+                    self.best_val_mae = current_metric
+            else:
+                current_metric = val_metrics['loss']
+                is_improvement = current_metric < self.best_val_loss
+                if is_improvement:
+                    self.best_val_loss = current_metric
+
+            if is_improvement:
                 self.patience_counter = 0
                 if save_dir:
                     self.model.save(os.path.join(save_dir, 'best_model.pt'))
-                logger.info(f"New best model saved with val_loss: {val_metrics['loss']:.4f}")
+                metric_name = 'MAE' if self.early_stopping_metric == 'mae' else 'Loss'
+                logger.info(f"New best model saved with val_{metric_name}: {current_metric:.4f}")
             else:
                 self.patience_counter += 1
                 if self.patience_counter >= self.early_stopping_patience:
                     logger.info(
                         f"Early stopping triggered after {epoch+1} epochs. "
-                        f"No improvement for {self.early_stopping_patience} epochs."
+                        f"No improvement for {self.early_stopping_patience} epochs on {self.early_stopping_metric}."
                     )
                     self.is_early_stopped = True
                     break
