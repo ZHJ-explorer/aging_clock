@@ -9,6 +9,10 @@
 - **深度学习模型族**：DeepMLP、ResNetMLP、CNN1D、ResCNN1D、Transformer、TabNet
 - **GPU加速训练**：支持CUDA加速的PyTorch深度学习模型
 - **特征选择优化**：方差阈值 + 相关性分析 + XGBoost重要性筛选（15,624 → 350特征）
+- **数据泄漏防护**：特征选择在训练集上进行，避免验证集/测试集信息泄漏
+- **不确定性估计**：MC Dropout蒙特卡洛dropout深度学习不确定性估计
+- **学习率预热**：WarmupCosineScheduler学习率预热+余弦退火策略
+- **可配置早停**：支持基于loss或MAE的早停策略
 - **Optuna超参数调优**：贝叶斯优化（TPESampler），70轮/模型
 - **集成学习**：加权平均集成与Stacking集成
 - **SHAP可解释性分析**：输出核心衰老基因
@@ -149,6 +153,7 @@ python preprocessing/preprocess_and_merge.py
 ```
 
 该脚本会：
+
 - 处理GEO数据集（GSE123696-98, GSE164191, GSE213516, GSE231409, GSE293163）
 - 处理GTEx数据集
 - 基因ID映射和标准化
@@ -187,12 +192,12 @@ python training/traditional_ml/test_all_models.py
 
 训练完成后自动生成以下图表到 `plots/` 目录：
 
-| 图表类型 | 说明 |
-|---------|------|
-| `{model}_training_history.png` | 训练/验证损失曲线 |
+| 图表类型                               | 说明          |
+| ---------------------------------- | ----------- |
+| `{model}_training_history.png`     | 训练/验证损失曲线   |
 | `{model}_prediction_vs_actual.png` | 实际 vs 预测散点图 |
-| `{model}_residuals.png` | 残差图 |
-| `{model}_error_distribution.png` | 误差分布直方图 |
+| `{model}_residuals.png`            | 残差图         |
+| `{model}_error_distribution.png`   | 误差分布直方图     |
 
 ## 数据集信息
 
@@ -215,27 +220,28 @@ python training/traditional_ml/test_all_models.py
 
 ### 深度学习模型（15,624特征）
 
-| 模型 | MAE | RMSE | R² | 说明 |
-| --- | --- | --- | --- | --- |
-| ResNetMLP | **9.33** | **12.20** | **0.4456** | 最优深度学习模型 |
-| DeepMLP | 9.77 | 12.73 | 0.3964 | 标准多层感知机 |
-| TabNet | 11.18 | 14.77 | 0.1876 | 注意力机制模型 |
-| ResCNN1D | 12.76 | 15.82 | 0.0686 | 一维残差CNN |
-| Transformer | 12.52 | 16.29 | 0.0128 | Transformer编码器 |
-| CNN1D | 15.56 | 18.21 | -0.2347 | 一维CNN |
+| 模型          | MAE      | RMSE      | R²         | 说明             |
+| ----------- | -------- | --------- | ---------- | -------------- |
+| ResNetMLP   | **9.41** | **12.37** | **0.4309** | 最优深度学习模型       |
+| DeepMLP     | 10.06    | 12.91     | 0.3700     | 标准多层感知机        |
+| Transformer | 11.25    | 14.46     | 0.2223     | Transformer编码器 |
+| TabNet      | 12.47    | 16.87     | -0.1812    | 注意力机制模型        |
+| ResCNN1D    | 14.86    | 17.70     | -0.1666    | 一维残差CNN        |
+| CNN1D       | 16.25    | 18.71     | -0.3027    | 一维CNN          |
 
 ### XGBoost机器学习模型（350特征）
 
-| 模型 | MAE | RMSE | R² | 说明 |
-| --- | --- | --- | --- | --- |
-| XGBoost (Optuna调优) | **8.44** | **10.69** | **0.5745** | 最优单模型 |
-| Stacking集成 (XGBoost+MLP) | 8.57 | 10.90 | 0.5639 | 加权融合0.72/0.28 |
+| 模型                       | MAE      | RMSE      | R²         | 说明            |
+| ------------------------ | -------- | --------- | ---------- | ------------- |
+| XGBoost (Optuna调优)       | **8.53** | **10.84** | **0.5897** | 最优单模型         |
+| Stacking集成 (XGBoost+MLP) | 8.76     | 11.17     | 0.5646     | 加权融合0.84/0.16 |
 
 **关键发现**：XGBoost在相同特征数量下表现优于深度学习模型，说明传统机器学习更适合这种小样本高维数据。深度学习模型在15,624特征上容易过拟合。
 
 ## 最优超参数
 
 ### XGBoost（Optuna 70轮调优）
+
 ```json
 {
   "n_estimators": 296,
@@ -251,6 +257,7 @@ python training/traditional_ml/test_all_models.py
 ```
 
 ### DeepMLP
+
 ```json
 {
   "n_layers": 4,
@@ -265,6 +272,7 @@ python training/traditional_ml/test_all_models.py
 ```
 
 ### ResNetMLP
+
 ```json
 {
   "hidden_dim": 256,
@@ -285,10 +293,9 @@ python training/traditional_ml/test_all_models.py
 4. **KNN缺失值填补**：保持数据的局部结构
 5. **ComBat批次效应校正**：使用经验贝叶斯框架消除批次效应
 
-   数学模型：$Y_{ij} = \alpha + X_i\beta + \gamma_j + \delta_j Z_{ij} + \epsilon_{ij}$
+   数学模型： $Y\_{ij} = \alpha + X\_i\beta + \gamma\_j + \delta\_j Z\_{ij} + \epsilon\_{ij}$
 
-   其中 $\gamma_j$ 和 $\delta_j$ 分别是批次 $j$ 的加性和乘性批次效应
-
+   其中 $\gamma\_j$ 和 $\delta\_j$ 分别是批次 $j$ 的加性和乘性批次效应
 6. **全局Z-score标准化**：确保所有特征在同一尺度
 
 ## 依赖包
@@ -312,15 +319,17 @@ pytorch-tabnet>=0.1.0
 
 ## 输出文件
 
-| 文件/目录 | 描述 |
-| --- | --- |
-| `optuna_results/` | Optuna超参数调优结果 |
-| `ensemble_results/` | 集成学习结果 |
-| `selected_features/feature_mask.npy` | 选中的特征掩码 |
-| `plots/` | 可视化图表（自动生成） |
-| `results/test_results/` | 测试结果文本文件 |
-| `results/logs/` | 训练日志文件 |
-| `models/` | 保存的模型文件 |
+| 文件/目录                                | 描述            |
+| ------------------------------------ | ------------- |
+| `optuna_results/`                    | Optuna超参数调优结果 |
+| `ensemble_results/`                  | 集成学习结果        |
+| `selected_features/feature_mask.npy` | 选中的特征掩码       |
+| `plots/`                             | 可视化图表（自动生成）   |
+| `results/test_results/`              | 测试结果文本文件      |
+| `results/logs/`                      | 训练日志文件        |
+| `models/`                            | 保存的模型文件       |
+
+<br />
 
 ## 后续改进方向
 
