@@ -6,7 +6,7 @@
 
 - **多源数据整合**：整合GEO公共数据库（GSE123696-98, GSE164191, GSE213516, GSE231409, GSE293163）与GTEx数据
 - **完整数据标准化流程**：基因名称标准化、Z-score变换、ComBat批次效应校正
-- **深度学习模型族**：DeepMLP、ResNetMLP、CNN1D、ResCNN1D、Transformer、TabNet
+- **深度学习模型族**：DeepMLP、ResNetMLP、CNN1D、ResCNN1D、Transformer、TabNet、DNN
 - **GPU加速训练**：支持CUDA加速的PyTorch深度学习模型
 - **特征选择优化**：方差阈值 + 相关性分析 + XGBoost重要性筛选（15,624 → 350特征）
 - **数据泄漏防护**：特征选择在训练集上进行，避免验证集/测试集信息泄漏
@@ -16,109 +16,106 @@
 - **Optuna超参数调优**：贝叶斯优化（TPESampler），70轮/模型
 - **集成学习**：加权平均集成与Stacking集成
 - **SHAP可解释性分析**：输出核心衰老基因
+- **模块化配置管理**：集中式配置文件（scripts/config.py）
 
 ## 项目结构
 
 ```
 aging_clock/
+├── archive/                        # 归档的临时文件
 ├── data/                           # 原始数据目录
 │   └── raw/                        # 原始数据文件
-├── preprocessed_data/              # 预处理后的数据
-│   └── merged_scaled.csv           # 合并并标准化的数据（1,240样本，15,624基因）
-├── preprocessing/                  # 数据预处理脚本
-│   └── preprocess_and_merge.py     # 数据合并与标准化
-├── training/                       # 训练脚本目录
-│   ├── deep_learning/
-│   │   └── train_all_dl_models.py  # 深度学习多模型训练
-│   └── traditional_ml/
-│       └── test_all_models.py       # 模型测试脚本
-├── results/                         # 结果输出目录
-│   ├── test_results/               # 测试结果文本
-│   │   ├── test_result_xgboost.txt
-│   │   └── test_result_stacking.txt
-│   ├── logs/                      # 训练日志
-│   │   └── training_dnn.log
-│   └── cache/                     # 缓存文件
-│       └── gene_cache.pkl
-├── models/                         # 保存的模型文件
-│   ├── xgboost_optimized.pkl      # XGBoost优化模型
-│   ├── base_models_stacking.pkl   # Stacking基模型
-│   └── deep_learning/             # 深度学习模型
-│       ├── dnn/
-│       ├── deepmlp/
-│       ├── resnetmlp/
-│       ├── cnn1d/
-│       ├── rescnn1d/
-│       ├── transformer/
-│       └── tabnet/
-├── scripts/                        # 核心脚本模块
-│   ├── data_processing/           # 数据处理脚本
-│   │   ├── process_gtex.py       # GTEx数据集处理
-│   │   ├── process_gse164191.py  # GSE164191数据集处理
-│   │   ├── process_gse213516.py  # GSE213516数据集处理
-│   │   ├── process_gse213516_simple.py
-│   │   └── merge_gse231409.py    # GSE231409数据合并
-│   ├── deep_learning/             # 深度学习模块
-│   │   ├── models/               # 模型定义
-│   │   │   ├── neural_networks/ # MLP系列模型（DeepMLP, ResNetMLP, CNN1D, ResCNN1D）
-│   │   │   ├── attention/       # 注意力模型（Transformer, TabNet）
-│   │   │   ├── ensemble/        # 集成模型
-│   │   │   └── base/           # 基础组件
-│   │   ├── configs/             # 配置文件
-│   │   ├── evaluation/         # 评估指标
-│   │   ├── optimization/        # 优化模块
-│   │   │   ├── feature_selection.py      # 特征选择
-│   │   │   ├── hyperparameter_tuning.py  # 超参数调优
-│   │   │   └── ensemble_learning.py      # 集成学习
-│   │   ├── training/            # 训练组件
-│   │   │   ├── trainer.py      # 训练器
-│   │   │   └── optimizer.py    # 优化器
-│   │   └── train_dnn.py        # DNN训练脚本
-│   ├── traditional_ml/          # 传统机器学习模块
-│   │   ├── optimization/        # XGBoost/LightGBM调优
-│   │   │   ├── hyperparameter_tuning.py
-│   │   │   └── optuna_tuning.py
-│   │   └── training/            # 模型训练
-│   │       ├── retrain_models.py
-│   │       ├── train_stacking.py
-│   │       └── train_xgboost.py
-│   ├── analysis/                # 分析脚本
-│   │   ├── explainability/     # SHAP可解释性分析
-│   │   ├── statistics/        # PCA等统计分析
-│   │   └── visualization/     # 可视化
-│   │       ├── plot_results.py          # ML预测结果绘图
-│   │       ├── plot_dl_results.py       # DL预测结果绘图
-│   │       └── plot_age_distribution.py
-│   └── utils/                 # 工具类
-│       ├── data_pipeline.py   # 数据流水线
-│       ├── data_utils.py      # 数据处理工具
-│       ├── gene_utils.py      # 基因相关工具
-│       └── model_utils.py     # 模型工具
-├── tools/                      # 工具脚本
-│   ├── check_age_distribution.py
-│   ├── check_cuda.py
-│   └── check_data.py
-├── optuna_results/             # Optuna调优结果
-│   ├── optuna_summary.json    # 最优超参数汇总
-│   ├── deepmlp/best_params.json
-│   ├── resnetmlp/best_params.json
-│   └── tabnet/best_params.json
-├── ensemble_results/           # 集成学习结果
-│   └── results_summary.json
-├── selected_features/         # 选中的特征
-│   └── feature_mask.npy
-├── plots/                     # 可视化图表
+├── docs/                           # 项目文档
+│   └── 技术路线_mermaid.md         # 技术路线图
+├── ensemble_results/               # 集成学习结果
+│   └── results_summary.json        # 最优超参数汇总
+├── optuna_results/                 # Optuna超参数调优结果
+│   ├── optuna_summary.json         # 最优超参数汇总
+│   ├── deepmlp/
+│   │   └── best_params.json
+│   ├── resnetmlp/
+│   │   └── best_params.json
+│   └── tabnet/
+│       └── best_params.json
+├── plots/                          # 可视化图表
 │   ├── age_distribution_histogram.png
 │   ├── pca_analysis.png
 │   ├── xgboost_optimized_*.png
+│   ├── mlp_*.png
 │   ├── {model}_training_history.png
 │   ├── {model}_prediction_vs_actual.png
 │   ├── {model}_residuals.png
 │   └── {model}_error_distribution.png
-├── archive/                   # 归档的临时文件
-├── requirements.txt            # 依赖包
-├── LICENSE.txt                # MIT许可证
-└── README.md                  # 项目文档
+├── preprocessed_data/              # 预处理后的数据
+│   └── merged_scaled.csv           # 合并并标准化的数据（1,240样本，15,624基因）
+├── preprocessing/                   # 数据预处理脚本
+│   └── preprocess_and_merge.py     # 数据合并与标准化
+├── results/                        # 结果输出目录
+│   ├── cache/                      # 缓存文件
+│   │   └── gene_cache.pkl
+│   ├── logs/                       # 训练日志
+│   │   └── training_dnn.log
+│   └── test_results/               # 测试结果文本
+│       ├── test_result_stacking.txt
+│       ├── test_result_stacking_refactored.txt
+│       └── test_result_xgboost.txt
+├── scripts/                        # 核心脚本模块
+│   ├── analysis/                   # 分析脚本
+│   │   ├── explainability/         # SHAP可解释性分析
+│   │   │   ├── shap_analysis.py
+│   │   │   └── shap_analysis_xgb_mlp.py
+│   │   ├── statistics/              # PCA等统计分析
+│   │   │   └── pca_analysis.py
+│   │   └── visualization/          # 可视化
+│   │       ├── plot_age_distribution.py
+│   │       ├── plot_dl_results.py
+│   │       └── plot_results.py
+│   ├── config.py                   # 集中式配置文件
+│   ├── data_processing/            # 数据处理脚本
+│   │   ├── merge_gse231409.py
+│   │   ├── process_gse164191.py
+│   │   ├── process_gse213516.py
+│   │   ├── process_gse213516_simple.py
+│   │   └── process_gtex.py
+│   ├── deep_learning/              # 深度学习模块
+│   │   ├── configs/                # 配置文件
+│   │   │   ├── __init__.py
+│   │   │   └── dnn_config.py
+│   │   ├── evaluation/              # 评估指标
+│   │   │   ├── evaluator.py
+│   │   │   └── metrics.py
+│   │   ├── optimization/            # 优化模块
+│   │   │   ├── ensemble_learning.py
+│   │   │   ├── feature_selection.py
+│   │   │   └── hyperparameter_tuning.py
+│   │   ├── training/               # 训练组件
+│   │   │   ├── optimizer.py
+│   │   │   └── trainer.py
+│   │   └── train_dnn.py            # DNN训练脚本
+│   ├── traditional_ml/              # 传统机器学习模块
+│   │   ├── optimization/            # XGBoost/LightGBM调优
+│   │   │   ├── hyperparameter_tuning.py
+│   │   │   └── optuna_tuning.py
+│   │   └── training/               # 模型训练
+│   │       ├── retrain_models.py
+│   │       ├── train_stacking.py
+│   │       └── train_xgboost.py
+│   └── utils/                      # 工具类
+│       ├── data_pipeline.py
+│       ├── data_utils.py
+│       ├── gene_utils.py
+│       └── model_utils.py
+├── selected_features/              # 选中的特征
+│   └── feature_mask.npy            # 特征掩码（15,624 → 350特征）
+├── training/                       # 训练脚本目录
+│   ├── deep_learning/
+│   │   └── train_all_dl_models.py   # 深度学习多模型训练
+│   └── traditional_ml/
+│       └── test_all_models.py      # 模型测试脚本
+├── .gitignore
+├── LICENSE.txt                     # MIT许可证
+├── README.md                       # 项目文档
+└── requirements.txt                # 依赖包
 ```
 
 ## 快速开始
@@ -153,7 +150,6 @@ python preprocessing/preprocess_and_merge.py
 ```
 
 该脚本会：
-
 - 处理GEO数据集（GSE123696-98, GSE164191, GSE213516, GSE231409, GSE293163）
 - 处理GTEx数据集
 - 基因ID映射和标准化
@@ -285,6 +281,20 @@ python training/traditional_ml/test_all_models.py
 }
 ```
 
+### TabNet
+
+```json
+{
+  "n_d": 16,
+  "n_a": 16,
+  "n_steps": 3,
+  "gamma": 1.5,
+  "lambda_sparse": 1e-4,
+  "momentum": 0.02,
+  "clip_value": 2.0
+}
+```
+
 ## 数据标准化流程
 
 1. **基因名称标准化**：统一不同数据集的基因命名规则
@@ -293,10 +303,20 @@ python training/traditional_ml/test_all_models.py
 4. **KNN缺失值填补**：保持数据的局部结构
 5. **ComBat批次效应校正**：使用经验贝叶斯框架消除批次效应
 
-   数学模型： $Y\_{ij} = \alpha + X\_i\beta + \gamma\_j + \delta\_j Z\_{ij} + \epsilon\_{ij}$
+   数学模型： $Y_{ij} = \alpha + X_i\beta + \gamma_j + \delta_j Z_{ij} + \epsilon_{ij}$
 
-   其中 $\gamma\_j$ 和 $\delta\_j$ 分别是批次 $j$ 的加性和乘性批次效应
+   其中 $\gamma_j$ 和 $\delta_j$ 分别是批次 $j$ 的加性和乘性批次效应
 6. **全局Z-score标准化**：确保所有特征在同一尺度
+
+## 特征选择流程
+
+采用三阶段特征选择策略，将特征从15,624维降至350维：
+
+1. **方差阈值筛选**：移除方差低于阈值的特征
+2. **相关性分析**：计算特征与年龄的相关性，移除高度相关的冗余特征
+3. **XGBoost重要性排序**：基于增益重要性选择Top 350特征
+
+关键：所有特征选择操作仅在训练集上进行，防止数据泄漏。
 
 ## 依赖包
 
@@ -327,9 +347,10 @@ pytorch-tabnet>=0.1.0
 | `plots/`                             | 可视化图表（自动生成）   |
 | `results/test_results/`              | 测试结果文本文件      |
 | `results/logs/`                      | 训练日志文件        |
+| `results/cache/`                     | 基因名称缓存文件     |
 | `models/`                            | 保存的模型文件       |
-
-<br />
+| `preprocessed_data/`                 | 预处理后数据        |
+| `docs/技术路线_mermaid.md`           | 技术路线图文档      |
 
 ## 后续改进方向
 
@@ -347,6 +368,7 @@ pytorch-tabnet>=0.1.0
 - 深度学习训练推荐使用GPU以加速
 - 训练日志保存在`results/logs/`目录中
 - 超参数调优记录保存在`optuna_results/`目录中
+- 基因名称缓存保存在`results/cache/gene_cache.pkl`
 
 ## 许可证
 
