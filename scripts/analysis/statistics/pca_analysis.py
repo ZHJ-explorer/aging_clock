@@ -86,7 +86,7 @@ def create_pca_plot(principal_components, dataset_labels, explained_variance):
 
 def get_dataset_labels():
     """获取每个样本所属的数据集标签"""
-    # 数据集大小（从preprocess_and_merge.py的输出中获取）
+    # 数据集大小（从预处理流程的输出中获取）
     dataset_sizes = [66, 60, 68, 121, 17, 455, 30, 803]
     dataset_names = [
         'GSE123696',

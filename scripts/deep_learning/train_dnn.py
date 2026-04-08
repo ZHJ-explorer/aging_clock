@@ -54,7 +54,7 @@ def main():
     merged_csv = os.path.join(Config.PREPROCESSED_DIR, 'merged_scaled.csv')
     if not os.path.exists(merged_csv):
         logger.error(f"数据文件不存在: {merged_csv}")
-        logger.error("请先运行 preprocess_and_merge.py 生成数据")
+        logger.error("请先运行 python scripts/data_processing/run_all_preprocessing.py 生成数据")
         return
 
     logger.info(f"从 {merged_csv} 加载数据...")

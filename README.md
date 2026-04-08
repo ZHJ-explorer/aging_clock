@@ -22,100 +22,55 @@
 
 ```
 aging_clock/
-├── archive/                        # 归档的临时文件
 ├── data/                           # 原始数据目录
 │   └── raw/                        # 原始数据文件
 ├── docs/                           # 项目文档
 │   └── 技术路线_mermaid.md         # 技术路线图
 ├── ensemble_results/               # 集成学习结果
 │   └── results_summary.json        # 最优超参数汇总
-├── optuna_results/                 # Optuna超参数调优结果
-│   ├── optuna_summary.json         # 最优超参数汇总
-│   ├── deepmlp/
-│   │   └── best_params.json
-│   ├── resnetmlp/
-│   │   └── best_params.json
-│   └── tabnet/
-│       └── best_params.json
-├── plots/                          # 可视化图表
+├── optuna_results/                # Optuna超参数调优结果
+├── plots/                         # 可视化图表
 │   ├── age_distribution_histogram.png
 │   ├── pca_analysis.png
-│   ├── xgboost_optimized_*.png
-│   ├── mlp_*.png
-│   ├── {model}_training_history.png
-│   ├── {model}_prediction_vs_actual.png
-│   ├── {model}_residuals.png
-│   └── {model}_error_distribution.png
-├── preprocessed_data/              # 预处理后的数据
-│   └── merged_scaled.csv           # 合并并标准化的数据（1,240样本，15,624基因）
-├── preprocessing/                   # 数据预处理脚本
-│   └── preprocess_and_merge.py     # 数据合并与标准化
-├── results/                        # 结果输出目录
-│   ├── cache/                      # 缓存文件
+│   └── ...
+├── preprocessed_data/             # 预处理后的数据
+│   └── merged_scaled.csv          # 合并并标准化的数据
+├── results/                       # 结果输出目录
+│   ├── cache/                     # 缓存文件
 │   │   └── gene_cache.pkl
-│   ├── logs/                       # 训练日志
+│   ├── logs/                      # 训练日志
 │   │   └── training_dnn.log
-│   └── test_results/               # 测试结果文本
-│       ├── test_result_stacking.txt
-│       ├── test_result_stacking_refactored.txt
-│       └── test_result_xgboost.txt
-├── scripts/                        # 核心脚本模块
-│   ├── analysis/                   # 分析脚本
-│   │   ├── explainability/         # SHAP可解释性分析
-│   │   │   ├── shap_analysis.py
-│   │   │   └── shap_analysis_xgb_mlp.py
-│   │   ├── statistics/              # PCA等统计分析
-│   │   │   └── pca_analysis.py
-│   │   └── visualization/          # 可视化
-│   │       ├── plot_age_distribution.py
-│   │       ├── plot_dl_results.py
-│   │       └── plot_results.py
-│   ├── config.py                   # 集中式配置文件
-│   ├── data_processing/            # 数据处理脚本
-│   │   ├── merge_gse231409.py
-│   │   ├── process_gse164191.py
-│   │   ├── process_gse213516.py
-│   │   ├── process_gse213516_simple.py
-│   │   └── process_gtex.py
-│   ├── deep_learning/              # 深度学习模块
-│   │   ├── configs/                # 配置文件
-│   │   │   ├── __init__.py
-│   │   │   └── dnn_config.py
-│   │   ├── evaluation/              # 评估指标
-│   │   │   ├── evaluator.py
-│   │   │   └── metrics.py
-│   │   ├── optimization/            # 优化模块
-│   │   │   ├── ensemble_learning.py
-│   │   │   ├── feature_selection.py
-│   │   │   └── hyperparameter_tuning.py
-│   │   ├── training/               # 训练组件
-│   │   │   ├── optimizer.py
-│   │   │   └── trainer.py
-│   │   └── train_dnn.py            # DNN训练脚本
-│   ├── traditional_ml/              # 传统机器学习模块
-│   │   ├── optimization/            # XGBoost/LightGBM调优
-│   │   │   ├── hyperparameter_tuning.py
-│   │   │   └── optuna_tuning.py
-│   │   └── training/               # 模型训练
-│   │       ├── retrain_models.py
-│   │       ├── train_stacking.py
-│   │       └── train_xgboost.py
-│   └── utils/                      # 工具类
-│       ├── data_pipeline.py
-│       ├── data_utils.py
-│       ├── gene_utils.py
-│       └── model_utils.py
-├── selected_features/              # 选中的特征
-│   └── feature_mask.npy            # 特征掩码（15,624 → 350特征）
-├── training/                       # 训练脚本目录
-│   ├── deep_learning/
-│   │   └── train_all_dl_models.py   # 深度学习多模型训练
-│   └── traditional_ml/
-│       └── test_all_models.py      # 模型测试脚本
+│   └── test_results/              # 测试结果文本
+├── scripts/                       # 核心脚本模块
+│   ├── analysis/                  # 分析脚本
+│   │   ├── explainability/       # SHAP可解释性分析
+│   │   ├── statistics/           # PCA等统计分析
+│   │   └── visualization/        # 可视化
+│   ├── config.py                  # 集中式配置文件
+│   ├── data_processing/           # 数据处理脚本
+│   │   ├── run_all_preprocessing.py   # 数据预处理统一入口
+│   │   ├── preprocess_and_merge.py    # 数据合并与标准化
+│   │   ├── process_gse164191.py       # 处理GSE164191数据集
+│   │   ├── process_gse213516.py       # 处理GSE213516数据集
+│   │   ├── process_gtex.py            # 处理GTEx数据集
+│   │   └── merge_gse231409.py         # 合并GSE231409数据集
+│   ├── deep_learning/             # 深度学习模块
+│   │   ├── configs/               # 配置文件
+│   │   ├── evaluation/           # 评估指标
+│   │   ├── optimization/          # 优化模块
+│   │   ├── training/              # 训练组件
+│   │   └── train_dnn.py           # DNN训练脚本
+│   ├── traditional_ml/            # 传统机器学习模块
+│   │   ├── optimization/          # XGBoost/LightGBM调优
+│   │   └── training/             # 模型训练
+│   └── utils/                     # 工具类
+├── selected_features/             # 选中的特征
+│   └── feature_mask.npy           # 特征掩码
+├── training/                      # 训练脚本目录
 ├── .gitignore
-├── LICENSE.txt                     # MIT许可证
-├── README.md                       # 项目文档
-└── requirements.txt                # 依赖包
+├── LICENSE.txt                    # MIT许可证
+├── README.md                      # 项目文档
+└── requirements.txt               # 依赖包
 ```
 
 ## 快速开始
@@ -146,16 +101,20 @@ pip install pycombat
 ### 1. 数据预处理
 
 ```bash
-python preprocessing/preprocess_and_merge.py
+python scripts/data_processing/run_all_preprocessing.py
 ```
 
-该脚本会：
-- 处理GEO数据集（GSE123696-98, GSE164191, GSE213516, GSE231409, GSE293163）
-- 处理GTEx数据集
-- 基因ID映射和标准化
-- 批次效应校正（ComBat）
-- Z-score特征标准化
-- 合并多个数据集
+该脚本会按顺序执行以下步骤：
+1. 处理各个数据集（GSE164191, GSE213516, GTEx等）
+2. 合并GSE231409数据集
+3. 合并所有数据集并进行标准化、批次效应校正
+
+如果需要单独处理某个数据集，可以直接运行对应的脚本：
+```bash
+python scripts/data_processing/process_gse164191.py
+python scripts/data_processing/process_gse213516.py
+python scripts/data_processing/process_gtex.py
+```
 
 ### 2. 机器学习训练
 

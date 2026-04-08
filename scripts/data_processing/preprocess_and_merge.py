@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # 抑制警告信息
 warnings.filterwarnings('ignore', category=UserWarning)

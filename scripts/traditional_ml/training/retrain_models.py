@@ -424,7 +424,7 @@ def train_combined_model():
         print("标准化数据...")
         df_scaled = standardize_data(merged_df)
     else:
-        print("错误：没有找到合并数据文件，请先运行 preprocess_and_merge.py")
+        print("错误：没有找到合并数据文件，请先运行 python scripts/data_processing/run_all_preprocessing.py")
         return None
     
     # 处理NaN值
