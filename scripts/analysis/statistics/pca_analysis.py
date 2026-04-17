@@ -43,46 +43,85 @@ def perform_pca(df, n_components=2):
     
     return principal_components, explained_variance
 
+from matplotlib.patches import Ellipse
+import matplotlib.transforms as transforms
+import matplotlib
+
+matplotlib.rcParams['font.family'] = 'Times New Roman'
+matplotlib.rcParams['font.size'] = 11
+
 def create_pca_plot(principal_components, dataset_labels, explained_variance):
-    """创建PCA散点图"""
+    """创建学术风格的PCA散点图"""
     print("创建PCA散点图...")
-    
-    # 创建DataFrame
+
     pca_df = pd.DataFrame(data=principal_components, columns=['PC1', 'PC2'])
     pca_df['Dataset'] = dataset_labels
-    
-    # 绘制散点图
-    plt.figure(figsize=(12, 8))
-    
-    # 定义颜色映射
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
     unique_datasets = np.unique(dataset_labels)
-    colors = plt.cm.tab10(np.linspace(0, 1, len(unique_datasets)))
+    colors = ['#CC66FF', '#FF6B6B', '#66B2FF', '#8888AA', '#D896D8', '#99AACC', '#E066FF', '#909090']
     color_map = dict(zip(unique_datasets, colors))
-    
-    # 绘制每个数据集的点
+
     for dataset in unique_datasets:
         subset = pca_df[pca_df['Dataset'] == dataset]
-        plt.scatter(subset['PC1'], subset['PC2'], label=dataset, alpha=0.7, s=50, marker='.')
-    
-    # 添加标题和标签
-    plt.title('PCA Analysis of Aging Clock Datasets', fontsize=16)
-    plt.xlabel(f'PC1 ({explained_variance[0]:.2%} variance)', fontsize=12)
-    plt.ylabel(f'PC2 ({explained_variance[1]:.2%} variance)', fontsize=12)
-    
-    # 添加图例
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    
-    # 添加网格
-    plt.grid(alpha=0.3)
-    
-    # 保存图像
-    output_file = os.path.join(PLOTS_DIR, 'pca_analysis.png')
+        x = subset['PC1'].values
+        y = subset['PC2'].values
+        color = color_map[dataset]
+
+        ax.scatter(x, y, label=dataset, alpha=0.6, s=10, c=color, edgecolors='white', linewidth=0.3)
+
+    for dataset in unique_datasets:
+        subset = pca_df[pca_df['Dataset'] == dataset]
+        x = subset['PC1'].values
+        y = subset['PC2'].values
+        color = color_map[dataset]
+
+        if len(x) > 4:
+            confidence_ellipse(x, y, ax, n_std=2.0, edgecolor=color, linewidth=1.5, linestyle='--', facecolor='none')
+
+    ax.set_xlabel(f'PC1 ({explained_variance[0]:.1%})', fontsize=12, fontweight='bold')
+    ax.set_ylabel(f'PC2 ({explained_variance[1]:.1%})', fontsize=12, fontweight='bold')
+    ax.tick_params(direction='in', length=3, width=0.8)
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.8)
+
+    ax.legend(loc='upper right', frameon=True, fancybox=False, edgecolor='black', fontsize=11,
+              markerscale=1.0, borderpad=0.8, labelspacing=0.5)
+
+    ax.grid(True, linestyle=':', alpha=0.4, linewidth=0.5)
+
     plt.tight_layout()
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    output_file = os.path.join(PLOTS_DIR, 'pca_analysis.png')
+    plt.savefig(output_file, dpi=600, bbox_inches='tight', format='png')
     print(f"PCA图已保存到: {output_file}")
-    
-    # 显示图像
     plt.show()
+
+
+def confidence_ellipse(x, y, ax, n_std=2.0, **kwargs):
+    """绘制置信椭圆"""
+    if len(x) < 3:
+        return
+
+    cov = np.cov(x, y)
+    pearson = cov[0, 1] / np.sqrt(cov[0, 0] * cov[1, 1])
+
+    ell_radius_x = np.sqrt(1 + pearson)
+    ell_radius_y = np.sqrt(1 - pearson)
+
+    ellipse = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2, **kwargs)
+
+    scale_x = np.sqrt(cov[0, 0]) * n_std
+    scale_y = np.sqrt(cov[1, 1]) * n_std
+
+    transf = transforms.Affine2D() \
+        .rotate_deg(45) \
+        .scale(scale_x, scale_y) \
+        .translate(np.mean(x), np.mean(y))
+
+    ellipse.set_transform(transf + ax.transData)
+    return ax.add_patch(ellipse)
 
 def get_dataset_labels():
     """获取每个样本所属的数据集标签"""
