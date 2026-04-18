@@ -5,15 +5,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
-from scipy.cluster.hierarchy import linkage, dendrogram
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from scripts.config import PLOTS_DIR, PREPROCESSED_DIR, Config
 
 Config.ensure_directories_exist()
-
-NPG_COLORS = ['#E64B35', '#4DBBD5', '#00A087', '#3C5488', '#7E6148', '#B09C85', '#F39B7F', '#8491B4', '#91D1C2', '#DC0000']
 
 def load_expression_data():
     """加载表达量数据"""
@@ -22,56 +19,6 @@ def load_expression_data():
         df = pd.read_csv(merged_csv, index_col=0)
         return df
     return None
-
-def filter_low_expression_genes(df, threshold=0.1, min_samples_ratio=0.5):
-    """过滤低表达基因
-
-    Args:
-        df: 表达量DataFrame
-        threshold: 表达阈值
-        min_samples_ratio: 低于阈值的样本比例阈值
-    """
-    gene_cols = [c for c in df.columns if c != 'age']
-    low_exp_genes = []
-
-    for gene in gene_cols:
-        expr_values = df[gene].values
-        ratio_below = np.sum(np.abs(expr_values) < threshold) / len(expr_values)
-        if ratio_below >= min_samples_ratio:
-            low_exp_genes.append(gene)
-
-    high_exp_genes = [g for g in gene_cols if g not in low_exp_genes]
-    return high_exp_genes, low_exp_genes
-
-def plot_expression_density(df, high_exp_genes, output_path):
-    """绘制基因表达量密度图（过滤前后对比）"""
-    gene_cols = [c for c in df.columns if c != 'age']
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    plt.rcParams['font.size'] = 20
-
-    ax1 = axes[0]
-    for i, gene in enumerate(gene_cols[:20]):
-        color = NPG_COLORS[i % len(NPG_COLORS)]
-        sns.kdeplot(df[gene].values, ax=ax1, color=color, alpha=0.6, linewidth=1.5)
-    ax1.set_xlabel('Expression Level (Z-score)', fontsize=20)
-    ax1.set_ylabel('Density', fontsize=20)
-    ax1.set_title(f'Before Filtering\n(All {len(gene_cols)} genes)', fontsize=20)
-    ax1.tick_params(axis='both', labelsize=16)
-
-    ax2 = axes[1]
-    for i, gene in enumerate(high_exp_genes[:20]):
-        color = NPG_COLORS[i % len(NPG_COLORS)]
-        sns.kdeplot(df[gene].values, ax=ax2, color=color, alpha=0.6, linewidth=1.5)
-    ax2.set_xlabel('Expression Level (Z-score)', fontsize=20)
-    ax2.set_ylabel('Density', fontsize=20)
-    ax2.set_title(f'After Filtering\n({len(high_exp_genes)} high-expression genes)', fontsize=20)
-    ax2.tick_params(axis='both', labelsize=16)
-
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"密度图已保存到: {output_path}")
 
 def compute_sample_correlations(df, method='spearman'):
     """计算样本间相关性矩阵"""
@@ -153,14 +100,6 @@ def main():
         return
 
     print(f"加载数据: {df.shape[0]} 样本, {len(df.columns)-1} 基因")
-
-    print("\n过滤低表达基因...")
-    high_exp_genes, low_exp_genes = filter_low_expression_genes(df)
-    print(f"保留 {len(high_exp_genes)} 个高表达基因, 过滤 {len(low_exp_genes)} 个低表达基因")
-
-    print("\n绘制表达量密度图...")
-    density_path = os.path.join(PLOTS_DIR, 'gene_expression_density.png')
-    plot_expression_density(df, high_exp_genes, density_path)
 
     print("\n绘制Spearman相关性热图...")
     spearman_path = os.path.join(PLOTS_DIR, 'sample_correlation_heatmap_spearman.png')
