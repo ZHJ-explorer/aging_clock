@@ -29,14 +29,20 @@ def convert_test_result_to_image(test_file='test_result.txt'):
         
         for line in lines:
             line = line.strip()
-            if '模型测试结果:' in line or 'Model test results:' in line:
+            if '模型测试结果:' in line or 'Model test results:' in line or '手动加权融合模型测试结果' in line:
                 # Save previous model's prediction data
                 if current_model and current_predictions:
                     predictions[current_model] = current_predictions
                 # Start new model
-                current_model = line.split(' ')[0]
+                if '手动加权融合模型测试结果' in line:
+                    current_model = 'Stacking'
+                else:
+                    current_model = line.split(' ')[0]
                 models.append(current_model)
                 current_predictions = []
+            elif line.startswith('最佳权重:'):
+                # Skip weight information line for Stacking model
+                continue
             elif line.startswith('MAE:'):
                 mae = float(line.split(':')[1].strip())
             elif line.startswith('RMSE:'):
