@@ -2,21 +2,17 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
+from scripts.config import PLOTS_DIR, Config
 
-# 设置英文arial字体
-plt.rcParams['font.sans-serif'] = ['Arial']  # 使用Arial字体
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
-
-# 图片目录
-PLOTS_DIR = 'plots'
+plt.rcParams['font.sans-serif'] = ['Arial']
+plt.rcParams['axes.unicode_minus'] = False
 
 
 def convert_test_result_to_image(test_file='test_result.txt'):
     """Convert test_result.txt data to images"""
     print(f"Converting {test_file} to images...")
-    
-    # Ensure plots directory exists
-    os.makedirs(PLOTS_DIR, exist_ok=True)
+
+    Config.ensure_directories_exist()
     
     try:
         # Read test result file

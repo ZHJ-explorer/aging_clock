@@ -4,13 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from scripts.config import PLOTS_DIR, PREPROCESSED_DIR, Config
 
-# 数据目录
-PREPROCESSED_DIR = 'preprocessed_data'
-PLOTS_DIR = 'plots'
 
-# 确保目录存在
-os.makedirs(PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 def load_merged_data():
     """加载合并后的数据"""

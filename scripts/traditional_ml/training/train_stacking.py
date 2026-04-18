@@ -19,19 +19,12 @@ from scripts.utils.data_pipeline import load_and_preprocess_merged_data
 from scripts.utils.model_utils import evaluate_model
 from scripts.traditional_ml.optimization.optuna_tuning import tune_xgboost_optuna, tune_mlp_optuna, select_features_xgboost
 from scripts.analysis.visualization.plot_results import convert_test_result_to_image
+from scripts.config import MODELS_DIR, PLOTS_DIR, DEFAULT_N_FEATURES, OPTUNA_N_TRIALS, OPTUNA_CV, Config
 
 
-class Config:
-    DATA_DIR = 'data'
-    MODELS_DIR = 'models'
-    PLOTS_DIR = 'plots'
-    PREPROCESSED_DIR = 'preprocessed_data'
-    
-    N_FEATURES = 350
-    OPTUNA_N_TRIALS = 50
-    OPTUNA_N_TRIALS_MLP = 50
-    OPTUNA_CV = 5
-    OPTUNA_CV_MLP = 10
+N_FEATURES = DEFAULT_N_FEATURES
+OPTUNA_N_TRIALS_MLP = 50
+OPTUNA_CV_MLP = 10
 
 
 logging.basicConfig(
@@ -44,8 +37,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-os.makedirs(Config.MODELS_DIR, exist_ok=True)
-os.makedirs(Config.PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 
 def compute_model_correlations(predictions, model_names):
@@ -79,7 +71,7 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
     
     logger.info("\n=== 步骤1: 基于XGBoost特征重要性选择特征 ===")
-    selected_features = select_features_xgboost(X_train, y_train, n_features=Config.N_FEATURES)
+    selected_features = select_features_xgboost(X_train, y_train, n_features=N_FEATURES)
     
     X_train_selected = X_train[selected_features]
     X_val_selected = X_val[selected_features]
@@ -272,9 +264,9 @@ def main():
     logger.info("\n核心衰老基因已保存到 shap_feature_importance_stacking.csv")
     
     logger.info("\n=== 保存模型 ===")
-    joblib.dump(trained_base_models, os.path.join(Config.MODELS_DIR, 'base_models_stacking.pkl'))
-    joblib.dump(best_weights, os.path.join(Config.MODELS_DIR, 'best_weights_stacking.pkl'))
-    joblib.dump(selected_features, os.path.join(Config.MODELS_DIR, 'selected_features_stacking.pkl'))
+    joblib.dump(trained_base_models, os.path.join(MODELS_DIR, 'base_models_stacking.pkl'))
+    joblib.dump(best_weights, os.path.join(MODELS_DIR, 'best_weights_stacking.pkl'))
+    joblib.dump(selected_features, os.path.join(MODELS_DIR, 'selected_features_stacking.pkl'))
     logger.info("模型保存完成")
     
     end_time = time.time()

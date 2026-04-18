@@ -8,15 +8,10 @@ import shap
 import matplotlib.pyplot as plt
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from scripts.utils.data_utils import split_data
+from scripts.config import MODELS_DIR, PLOTS_DIR, PREPROCESSED_DIR, Config
 
 
-class Config:
-    DATA_DIR = 'data'
-    MODELS_DIR = 'models'
-    PLOTS_DIR = 'plots'
-    PREPROCESSED_DIR = 'preprocessed_data'
-    
-    N_TOP_FEATURES = 20
+N_TOP_FEATURES = 20
 
 
 logging.basicConfig(
@@ -29,13 +24,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-os.makedirs(Config.PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 
 def load_data_and_models():
     logger.info("加载数据和模型...")
     
-    merged_csv = os.path.join(Config.PREPROCESSED_DIR, 'merged_scaled.csv')
+    merged_csv = os.path.join(PREPROCESSED_DIR, 'merged_scaled.csv')
     if not os.path.exists(merged_csv):
         logger.error("merged_scaled.csv 不存在")
         return None, None, None, None, None
@@ -57,7 +52,7 @@ def load_data_and_models():
     X_test_selected = X_test[selected_features]
     gene_names = selected_features
     
-    base_models = joblib.load(os.path.join(Config.MODELS_DIR, 'base_models_refactored.pkl'))
+    base_models = joblib.load(os.path.join(MODELS_DIR, 'base_models_refactored.pkl'))
     xgb_model = None
     mlp_model = None
     
@@ -123,7 +118,7 @@ def plot_shap_summary(shap_values, X, gene_names, n_top=20, prefix="xgb"):
         show=False
     )
     plt.tight_layout()
-    plt.savefig(os.path.join(Config.PLOTS_DIR, f'shap_summary_beeswarm_{prefix}.png'), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(PLOTS_DIR, f'shap_summary_beeswarm_{prefix}.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
     logger.info(f"{prefix} SHAP summary plots保存完成")
@@ -179,7 +174,7 @@ def main():
     xgb_explainer, xgb_shap_values = calculate_xgb_shap_values(xgb_model, X_test)
     plot_shap_summary(xgb_shap_values, X_test, gene_names, n_top=Config.N_TOP_FEATURES, prefix="xgb")
     xgb_top_genes = get_top_genes(xgb_shap_values, gene_names, n_top=Config.N_TOP_FEATURES)
-    xgb_top_genes.to_csv(os.path.join(Config.PLOTS_DIR, 'top_genes_shap_xgb.csv'), index=False, encoding='utf-8')
+    xgb_top_genes.to_csv(os.path.join(PLOTS_DIR, 'top_genes_shap_xgb.csv'), index=False, encoding='utf-8')
     
     logger.info("\nXGBoost Top 20 基因:")
     for _, row in xgb_top_genes.iterrows():
@@ -187,9 +182,9 @@ def main():
     
     logger.info("\n=== MLP SHAP分析 ===")
     mlp_explainer, mlp_shap_values = calculate_mlp_shap_values(mlp_model, X_train, X_test)
-    plot_shap_summary(mlp_shap_values, X_test, gene_names, n_top=Config.N_TOP_FEATURES, prefix="mlp")
-    mlp_top_genes = get_top_genes(mlp_shap_values, gene_names, n_top=Config.N_TOP_FEATURES)
-    mlp_top_genes.to_csv(os.path.join(Config.PLOTS_DIR, 'top_genes_shap_mlp.csv'), index=False, encoding='utf-8')
+    plot_shap_summary(mlp_shap_values, X_test, gene_names, n_top=N_TOP_FEATURES, prefix="mlp")
+    mlp_top_genes = get_top_genes(mlp_shap_values, gene_names, n_top=N_TOP_FEATURES)
+    mlp_top_genes.to_csv(os.path.join(PLOTS_DIR, 'top_genes_shap_mlp.csv'), index=False, encoding='utf-8')
     
     logger.info("\nMLP Top 20 基因:")
     for _, row in mlp_top_genes.iterrows():
@@ -200,7 +195,7 @@ def main():
     common_genes_df = pd.DataFrame({
         'gene': list(common_genes)
     })
-    common_genes_df.to_csv(os.path.join(Config.PLOTS_DIR, 'common_core_genes.csv'), index=False, encoding='utf-8')
+    common_genes_df.to_csv(os.path.join(PLOTS_DIR, 'common_core_genes.csv'), index=False, encoding='utf-8')
     
     logger.info("\nSHAP分析完成！")
     logger.info("生成的文件:")

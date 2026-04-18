@@ -18,6 +18,7 @@ from scripts.deep_learning.models.base.trainer import DatasetWrapper
 from scripts.deep_learning.training.trainer import Trainer
 from scripts.deep_learning.training.optimizer import build_optimizer, build_scheduler
 from scripts.utils.data_utils import split_data
+from scripts.config import MODELS_DIR, PREPROCESSED_DIR, RANDOM_SEED, Config
 
 
 LOG_DIR = 'results/logs'
@@ -32,16 +33,6 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-
-
-class Config:
-    DATA_DIR = 'data'
-    MODELS_DIR = 'models'
-    PLOTS_DIR = 'plots'
-    PREPROCESSED_DIR = 'preprocessed_data'
-
-    N_FEATURES = 350
-    RANDOM_STATE = 42
 
 
 def main():
@@ -160,7 +151,7 @@ def main():
         l2_reg=dnn_config.l2_reg
     )
 
-    save_dir = os.path.join(Config.MODELS_DIR, 'deep_learning', 'dnn')
+    save_dir = os.path.join(MODELS_DIR, 'deep_learning', 'dnn')
     os.makedirs(save_dir, exist_ok=True)
 
     logger.info("\n开始训练...")

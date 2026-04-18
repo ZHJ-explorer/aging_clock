@@ -11,14 +11,13 @@ import logging
 import matplotlib.pyplot as plt
 import pandas as pd
 import xgboost as xgb
+from scripts.config import MODELS_DIR, PLOTS_DIR, Config
 
 logger = logging.getLogger(__name__)
-MODELS_DIR = 'models'
-PLOTS_DIR = 'plots'
 
 plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['axes.unicode_minus'] = False
-os.makedirs(PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 
 def plot_ml_training_history(history: dict, model_name: str, save_path: str = None):

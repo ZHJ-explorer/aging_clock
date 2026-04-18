@@ -13,12 +13,10 @@ warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 from scripts.utils.data_utils import standardize_data
 from scripts.utils.gene_utils import standardize_gene_name, map_gene_ids, align_genes_across_datasets
+from scripts.config import PREPROCESSED_DIR, Config
 
-# 数据目录
-PREPROCESSED_DIR = 'preprocessed_data'
 
-# 确保目录存在
-os.makedirs(PREPROCESSED_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 def collect_all_genes():
     """收集所有数据集的基因ID"""

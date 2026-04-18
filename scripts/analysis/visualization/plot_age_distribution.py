@@ -6,9 +6,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scripts.utils.data_utils import split_data
+from scripts.config import PLOTS_DIR, PREPROCESSED_DIR, Config
 
-PLOTS_DIR = 'plots'
-PREPROCESSED_DIR = 'preprocessed_data'
 
 plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['axes.unicode_minus'] = False
@@ -81,9 +80,9 @@ def plot_age_distribution_histogram():
 
     ax.set_xticks(x)
     ax.set_xticklabels(age_groups)
-    ax.set_xlabel('Age (years)', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Count', fontsize=14, fontweight='bold')
-    ax.legend(loc='upper right', frameon=True, fancybox=False, edgecolor='black', fontsize=12)
+    ax.set_xlabel('Age (years)', fontsize=20, fontweight='bold')
+    ax.set_ylabel('Count', fontsize=20, fontweight='bold')
+    ax.legend(loc='upper right', frameon=True, fancybox=False, edgecolor='black', fontsize=20)
 
     ax.grid(alpha=0.3, axis='y')
     ax.spines['top'].set_visible(False)

@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import pandas as pd
 import numpy as np
@@ -7,27 +8,22 @@ import multiprocessing
 import matplotlib.pyplot as plt
 from multiprocessing import Process, Queue
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['axes.unicode_minus'] = False
 
 from sklearn.exceptions import ConvergenceWarning
 
-# 抑制警告信息
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
-from data_utils import standardize_data, select_features, split_data
-from model_utils import train_models, evaluate_model, save_models
-from gene_utils import standardize_gene_name, map_gene_ids, align_genes_across_datasets
+from scripts.utils.data_utils import standardize_data, select_features, split_data
+from scripts.utils.model_utils import train_models, evaluate_model, save_models
+from scripts.utils.gene_utils import standardize_gene_name, map_gene_ids, align_genes_across_datasets
+from scripts.config import PREPROCESSED_DIR, MODELS_DIR, PLOTS_DIR, Config
 
-# 数据目录
-PREPROCESSED_DIR = 'preprocessed_data'
-MODELS_DIR = 'models'
-PLOTS_DIR = 'plots'
-
-# 确保目录存在
-os.makedirs(MODELS_DIR, exist_ok=True)
-os.makedirs(PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 def load_processed_data():
     """加载已处理的数据"""

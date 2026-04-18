@@ -9,15 +9,10 @@ import shap
 import matplotlib.pyplot as plt
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from scripts.utils.data_utils import split_data
+from scripts.config import MODELS_DIR, PLOTS_DIR, PREPROCESSED_DIR, Config
 
 
-class Config:
-    DATA_DIR = 'data'
-    MODELS_DIR = 'models'
-    PLOTS_DIR = 'plots'
-    PREPROCESSED_DIR = 'preprocessed_data'
-    
-    N_TOP_FEATURES = 20
+N_TOP_FEATURES = 20
 
 
 logging.basicConfig(
@@ -30,7 +25,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-os.makedirs(Config.PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 
 def load_data_and_models():
@@ -52,12 +47,12 @@ def load_data_and_models():
     
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(merged_df)
     
-    selected_features = joblib.load(os.path.join(Config.MODELS_DIR, 'selected_features_xgboost.pkl'))
+    selected_features = joblib.load(os.path.join(MODELS_DIR, 'selected_features_xgboost.pkl'))
     
     X_test_selected = X_test[selected_features]
     gene_names = selected_features
     
-    xgb_model = joblib.load(os.path.join(Config.MODELS_DIR, 'xgboost_optimized.pkl'))
+    xgb_model = joblib.load(os.path.join(MODELS_DIR, 'xgboost_optimized.pkl'))
     
     logger.info(f"数据加载完成，测试集样本数: {len(X_test_selected)}")
     logger.info(f"特征数: {len(gene_names)}")
@@ -88,7 +83,7 @@ def plot_shap_summary(shap_values, X, gene_names, n_top=20):
         show=False
     )
     plt.tight_layout()
-    plt.savefig(os.path.join(Config.PLOTS_DIR, 'shap_summary_bar.png'), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(PLOTS_DIR, 'shap_summary_bar.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
     plt.figure(figsize=(12, 8))
@@ -100,7 +95,7 @@ def plot_shap_summary(shap_values, X, gene_names, n_top=20):
         show=False
     )
     plt.tight_layout()
-    plt.savefig(os.path.join(Config.PLOTS_DIR, 'shap_summary_beeswarm.png'), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(PLOTS_DIR, 'shap_summary_beeswarm.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
     logger.info("SHAP summary plots保存完成")
@@ -125,7 +120,7 @@ def plot_shap_dependence(shap_values, X, gene_names, top_n_genes=5):
             show=False
         )
         plt.tight_layout()
-        plt.savefig(os.path.join(Config.PLOTS_DIR, f'shap_dependence_{gene}.png'), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(PLOTS_DIR, f'shap_dependence_{gene}.png'), dpi=300, bbox_inches='tight')
         plt.close()
     
     logger.info("SHAP dependence plots保存完成")
@@ -149,7 +144,7 @@ def analyze_top_genes(shap_values, gene_names, n_top=20):
         })
     
     results_df = pd.DataFrame(results)
-    results_df.to_csv(os.path.join(Config.PLOTS_DIR, 'top_genes_shap.csv'), index=False, encoding='utf-8')
+    results_df.to_csv(os.path.join(PLOTS_DIR, 'top_genes_shap.csv'), index=False, encoding='utf-8')
     
     logger.info(f"Top {n_top} 基因分析完成")
     logger.info("\nTop 20 基因:")
@@ -174,7 +169,7 @@ def main():
     
     explainer, shap_values = calculate_shap_values(xgb_model, X_test)
     
-    plot_shap_summary(shap_values, X_test, gene_names, n_top=Config.N_TOP_FEATURES)
+    plot_shap_summary(shap_values, X_test, gene_names, n_top=N_TOP_FEATURES)
     
     plot_shap_dependence(shap_values, X_test, gene_names, top_n_genes=5)
     

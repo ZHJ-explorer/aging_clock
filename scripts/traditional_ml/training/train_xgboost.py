@@ -17,17 +17,10 @@ from scripts.utils.data_pipeline import load_and_preprocess_merged_data, prepare
 from scripts.utils.model_utils import evaluate_model
 from scripts.traditional_ml.optimization.optuna_tuning import tune_xgboost_optuna, select_features_xgboost
 from scripts.analysis.visualization.plot_results import convert_test_result_to_image
+from scripts.config import MODELS_DIR, PLOTS_DIR, DEFAULT_N_FEATURES, OPTUNA_N_TRIALS, OPTUNA_CV, Config
 
 
-class Config:
-    DATA_DIR = 'data'
-    MODELS_DIR = 'models'
-    PLOTS_DIR = 'plots'
-    PREPROCESSED_DIR = 'preprocessed_data'
-    
-    N_FEATURES_XGBOOST = 350
-    OPTUNA_N_TRIALS = 70
-    OPTUNA_CV = 5
+N_FEATURES_XGBOOST = DEFAULT_N_FEATURES
 
 
 logging.basicConfig(
@@ -40,8 +33,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-os.makedirs(Config.MODELS_DIR, exist_ok=True)
-os.makedirs(Config.PLOTS_DIR, exist_ok=True)
+Config.ensure_directories_exist()
 
 
 def main():
@@ -77,8 +69,8 @@ def main():
     logger.info("\n=== 步骤2: 使用Optuna调优XGBoost超参数（只在训练集上） ===")
     xgb_model, best_params, best_cv_score = tune_xgboost_optuna(
         X_train_selected.values, y_train.values,
-        n_trials=Config.OPTUNA_N_TRIALS,
-        cv=Config.OPTUNA_CV
+        n_trials=OPTUNA_N_TRIALS,
+        cv=OPTUNA_CV
     )
     
     logger.info("\n=== 步骤3: 重复交叉验证评估模型稳定性（只在训练集上进行） ===")
@@ -148,9 +140,9 @@ def main():
     logger.info("\n核心衰老基因已保存到 shap_feature_importance_xgboost.csv")
     
     logger.info("\n=== 保存模型 ===")
-    joblib.dump(final_model, os.path.join(Config.MODELS_DIR, 'xgboost_optimized.pkl'))
-    joblib.dump(selected_features, os.path.join(Config.MODELS_DIR, 'selected_features_xgboost.pkl'))
-    joblib.dump(best_params, os.path.join(Config.MODELS_DIR, 'best_params_xgboost.pkl'))
+    joblib.dump(final_model, os.path.join(MODELS_DIR, 'xgboost_optimized.pkl'))
+    joblib.dump(selected_features, os.path.join(MODELS_DIR, 'selected_features_xgboost.pkl'))
+    joblib.dump(best_params, os.path.join(MODELS_DIR, 'best_params_xgboost.pkl'))
     logger.info("模型保存完成")
     
     end_time = time.time()

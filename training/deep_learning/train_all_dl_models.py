@@ -20,6 +20,7 @@ from scripts.deep_learning.models.base.trainer import DatasetWrapper
 from scripts.deep_learning.training.trainer import Trainer
 from scripts.deep_learning.training.optimizer import build_optimizer, build_scheduler
 from sklearn.model_selection import train_test_split
+from scripts.config import PREPROCESSED_DIR, PLOTS_DIR, Config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,8 +28,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-PREPROCESSED_DIR = 'preprocessed_data'
 MODELS_DIR = 'models/deep_learning'
+Config.ensure_directories_exist()
 
 def split_data(df, test_size=0.2, val_size=0.1, random_state=42):
     if 'age' not in df.columns:
